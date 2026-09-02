@@ -55,15 +55,21 @@ function escapeHtml(value) {
 
 async function joinOnlineUsers() {
   try {
-    // इस browser की पुरानी entry हटाओ
-    if (onlineUserId) {
-      await supabaseClient
-        .from("online_users")
-        .delete()
-        .eq("id", onlineUserId);
 
-      onlineUserId = null;
-    }
+    /*
+      IMPORTANT:
+      Same username ki purani sari entries delete karo.
+      Isse refresh ke baad duplicate username nahi banega.
+    */
+
+    await supabaseClient
+      .from("online_users")
+      .delete()
+      .eq("username", username);
+
+    onlineUserId = null;
+
+    /* Nayi single online entry create karo */
 
     const { data, error } = await supabaseClient
       .from("online_users")
@@ -82,14 +88,21 @@ async function joinOnlineUsers() {
     await loadOnlineUsers();
 
   } catch (error) {
-    console.error("Online user error:", error);
+
+    console.error(
+      "Online user error:",
+      error
+    );
+
   }
 }
 
 async function updateHeartbeat() {
+
   if (!onlineUserId) return;
 
   try {
+
     const { error } = await supabaseClient
       .from("online_users")
       .update({
@@ -100,51 +113,94 @@ async function updateHeartbeat() {
       .eq("id", onlineUserId);
 
     if (error) {
-      console.error("Heartbeat error:", error);
+
+      console.error(
+        "Heartbeat error:",
+        error
+      );
+
+      /*
+        Agar current row delete ho gayi ho,
+        to dobara create kar do.
+      */
+
+      await joinOnlineUsers();
+      return;
     }
 
     await loadOnlineUsers();
 
   } catch (error) {
-    console.error("Heartbeat error:", error);
+
+    console.error(
+      "Heartbeat error:",
+      error
+    );
+
   }
 }
 
 function startHeartbeat() {
+
   if (heartbeatTimer) {
-    clearInterval(heartbeatTimer);
+
+    clearInterval(
+      heartbeatTimer
+    );
+
   }
 
-  heartbeatTimer = setInterval(() => {
-    updateHeartbeat();
-  }, 15000);
+  heartbeatTimer =
+    setInterval(
+      updateHeartbeat,
+      15000
+    );
 }
 
 async function loadOnlineUsers() {
-  try {
-    const cutoff = Date.now() - 45000;
 
-    const { data, error } = await supabaseClient
-      .from("online_users")
-      .select("id, username, last_seen")
-      .eq("room", currentRoom)
-      .gt("last_seen", cutoff)
-      .order("last_seen", {
-        ascending: false
-      });
+  try {
+
+    const cutoff =
+      Date.now() - 45000;
+
+    const { data, error } =
+      await supabaseClient
+        .from("online_users")
+        .select(
+          "id, username, last_seen"
+        )
+        .eq(
+          "room",
+          currentRoom
+        )
+        .gt(
+          "last_seen",
+          cutoff
+        )
+        .order(
+          "last_seen",
+          {
+            ascending: false
+          }
+        );
 
     if (error) throw error;
 
-    $("#onlineCount").textContent = data.length;
+    $("#onlineCount").textContent =
+      data.length;
 
-    const people = $("#people");
+    const people =
+      $("#people");
 
     people.innerHTML = `
       <h3>Online now</h3>
     `;
 
     data.forEach(user => {
-      const div = document.createElement("div");
+
+      const div =
+        document.createElement("div");
 
       div.className =
         user.id === onlineUserId
@@ -154,28 +210,38 @@ async function loadOnlineUsers() {
       div.innerHTML = `
         🟢 <b>${escapeHtml(user.username)}</b>
         <small>
-          ${user.id === onlineUserId ? "You" : "Online"}
+          ${
+            user.id === onlineUserId
+              ? "You"
+              : "Online"
+          }
         </small>
       `;
 
       people.appendChild(div);
+
     });
 
   } catch (error) {
+
     console.error(
       "Load online users error:",
       error
     );
+
   }
 }
 
 function setupOnlineRealtime() {
+
   if (onlineChannel) {
+
     supabaseClient.removeChannel(
       onlineChannel
     );
 
     onlineChannel = null;
+
   }
 
   onlineChannel =
@@ -194,17 +260,22 @@ function setupOnlineRealtime() {
           table: "online_users"
         },
         () => {
+
           loadOnlineUsers();
+
         }
       )
       .subscribe();
+
 }
 
 /* =========================
    ENTER CHAT
 ========================= */
 
-async function enter(room = currentRoom) {
+async function enter(
+  room = currentRoom
+) {
 
   const name =
     (
@@ -222,10 +293,16 @@ async function enter(room = currentRoom) {
 
   currentRoom = room;
 
-  $("#home").classList.add("hidden");
-  $("#chat").classList.remove("hidden");
+  $("#home")
+    .classList
+    .add("hidden");
 
-  $("#meName").textContent =
+  $("#chat")
+    .classList
+    .remove("hidden");
+
+  $("#meName")
+    .textContent =
     username;
 
   renderRoom();
@@ -239,6 +316,7 @@ async function enter(room = currentRoom) {
   renderMessages();
 
   setupRealtime();
+
 }
 
 /* =========================
@@ -247,13 +325,14 @@ async function enter(room = currentRoom) {
 
 function renderRoom() {
 
-  $("#roomTitle").textContent =
-    (
-      roomIcons[currentRoom] ||
-      "💬"
-    ) +
-    " " +
-    currentRoom;
+  $("#roomTitle")
+    .textContent =
+      (
+        roomIcons[currentRoom] ||
+        "💬"
+      ) +
+      " " +
+      currentRoom;
 
   document
     .querySelectorAll(".room")
@@ -265,6 +344,7 @@ function renderRoom() {
       );
 
     });
+
 }
 
 /* =========================
@@ -282,11 +362,13 @@ async function renderMessages() {
 
   samples.forEach(
     ([name, text]) => {
+
       addMsg(
         name,
         text,
         false
       );
+
     }
   );
 
@@ -336,6 +418,7 @@ async function renderMessages() {
     );
 
   }
+
 }
 
 function addMsg(
@@ -353,7 +436,9 @@ function addMsg(
   if (
     displayedMessages.has(key)
   ) {
+
     return;
+
   }
 
   displayedMessages.add(key);
@@ -381,6 +466,7 @@ function addMsg(
 
   $("#messages")
     .appendChild(d);
+
 }
 
 /* =========================
@@ -399,7 +485,9 @@ async function send() {
     !text ||
     !username
   ) {
+
     return;
+
   }
 
   try {
@@ -457,6 +545,7 @@ async function send() {
     );
 
   }
+
 }
 
 /* =========================
@@ -473,6 +562,7 @@ function setupRealtime() {
       );
 
     realtimeChannel = null;
+
   }
 
   realtimeChannel =
@@ -521,6 +611,7 @@ function setupRealtime() {
 
         }
       );
+
 }
 
 /* =========================
