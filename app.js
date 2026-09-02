@@ -49,7 +49,6 @@ function escapeHtml(value) {
 
 async function joinOnlineUsers() {
   try {
-    // पुराने online record हटाएँ
     if (onlineUserId) {
       await supabaseClient
         .from("online_users")
@@ -194,7 +193,6 @@ async function renderMessages() {
   const box = $("#messages");
 
   box.innerHTML = "";
-
   displayedMessages.clear();
 
   samples.forEach(([name, text]) => {
@@ -248,8 +246,7 @@ function addMsg(
 
   displayedMessages.add(key);
 
-  const d =
-    document.createElement("div");
+  const d = document.createElement("div");
 
   d.className =
     "msg" + (mine ? " mine" : "");
@@ -272,19 +269,15 @@ function addMsg(
 ========================= */
 
 async function send() {
-  const input =
-    $("#messageInput");
-
-  const text =
-    input.value.trim();
+  const input = $("#messageInput");
+  const text = input.value.trim();
 
   if (!text || !username) {
     return;
   }
 
   try {
-    const createdAt =
-      Date.now();
+    const createdAt = Date.now();
 
     const { data, error } =
       await supabaseClient
@@ -341,9 +334,7 @@ function setupRealtime() {
 
   realtimeChannel =
     supabaseClient
-      .channel(
-        "room-" + currentRoom
-      )
+      .channel("room-" + currentRoom)
       .on(
         "postgres_changes",
         {
@@ -354,8 +345,7 @@ function setupRealtime() {
             `room=eq.${currentRoom}`
         },
         payload => {
-          const message =
-            payload.new;
+          const message = payload.new;
 
           addMsg(
             message.name,
@@ -377,6 +367,14 @@ function setupRealtime() {
 }
 
 /* =========================
+   ONLINE USERS BUTTON
+========================= */
+
+$("#usersBtn").onclick = () => {
+  $("#people").classList.toggle("show");
+};
+
+/* =========================
    BUTTONS
 ========================= */
 
@@ -396,19 +394,14 @@ $("#nameInput").addEventListener(
 document
   .querySelectorAll(".roomcard")
   .forEach(button => {
-
     button.onclick = () => {
-      enter(
-        button.dataset.room
-      );
+      enter(button.dataset.room);
     };
-
   });
 
 document
   .querySelectorAll(".room")
   .forEach(button => {
-
     button.onclick = () => {
 
       currentRoom =
@@ -422,11 +415,9 @@ document
       joinOnlineUsers();
       setupOnlineRealtime();
     };
-
   });
 
-$("#sendBtn").onclick =
-  send;
+$("#sendBtn").onclick = send;
 
 $("#messageInput").addEventListener(
   "keydown",
@@ -468,13 +459,8 @@ $("#backBtn").onclick = async () => {
     onlineChannel = null;
   }
 
-  $("#chat").classList.add(
-    "hidden"
-  );
-
-  $("#home").classList.remove(
-    "hidden"
-  );
+  $("#chat").classList.add("hidden");
+  $("#home").classList.remove("hidden");
 };
 
 /* =========================
@@ -482,12 +468,7 @@ $("#backBtn").onclick = async () => {
 ========================= */
 
 $("#emojiBtn").onclick = () => {
-
-  $("#emojiPanel")
-    .classList.toggle(
-      "hidden"
-    );
-
+  $("#emojiPanel").classList.toggle("hidden");
 };
 
 $("#emojiPanel").onclick = e => {
@@ -501,10 +482,8 @@ $("#emojiPanel").onclick = e => {
       $("#messageInput");
 
     input.value += emoji;
-
     input.focus();
   }
-
 };
 
 /* =========================
@@ -512,11 +491,7 @@ $("#emojiPanel").onclick = e => {
 ========================= */
 
 $("#themeBtn").onclick = () => {
-
-  document.body.classList.toggle(
-    "light"
-  );
-
+  document.body.classList.toggle("light");
 };
 
 /* =========================
