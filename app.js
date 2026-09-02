@@ -3,8 +3,15 @@ const $ = s => document.querySelector(s);
 const SUPABASE_URL = "https://uopwsaymtomnxfmacsnu.supabase.co";
 const SUPABASE_KEY = "sb_publishable_z6vlfZ8IsWgM4clPEWIavA_YBV4GlQ2";
 
+const supabaseClient = window.supabase.createClient(
+  SUPABASE_URL,
+  SUPABASE_KEY
+);
+
 let username = localStorage.getItem("vibechat_name") || "";
 let currentRoom = "Chill Zone";
+let realtimeChannel = null;
+const displayedMessages = new Set();
 
 const roomIcons = {
   "Chill Zone": "🌙",
@@ -20,29 +27,6 @@ const samples = [
   ["Pixel", "Heyyy everyone ✨"]
 ];
 
-async function dbRequest(path, options = {}) {
-  const response = await fetch(
-    `${SUPABASE_URL}/rest/v1/${path}`,
-    {
-      ...options,
-      headers: {
-        "apikey": SUPABASE_KEY,
-        "Authorization": `Bearer ${SUPABASE_KEY}`,
-        "Content-Type": "application/json",
-        "Prefer": "return=representation",
-        ...(options.headers || {})
-      }
-    }
-  );
-
-  if (!response.ok) {
-    const error = await response.text();
-    throw new Error(error);
-  }
-
-  return response.json();
-}
-
 function enter(room = currentRoom) {
   const name =
     ($("#nameInput").value.trim() || username || "Guest").slice(0, 20);
@@ -54,11 +38,11 @@ function enter(room = currentRoom) {
 
   $("#home").classList.add("hidden");
   $("#chat").classList.remove("hidden");
-
   $("#meName").textContent = name;
 
   renderRoom();
   renderMessages();
+  setupRealtime();
 }
 
 function renderRoom() {
@@ -76,21 +60,27 @@ function renderRoom() {
 async function renderMessages() {
   const box = $("#messages");
   box.innerHTML = "";
+  displayedMessages.clear();
 
   samples.forEach(([name, text]) => {
     addMsg(name, text, false);
   });
 
   try {
-    const messages = await dbRequest(
-      `messages?room=eq.${encodeURIComponent(currentRoom)}&select=*&order=created_at.asc`
-    );
+    const { data, error } = await supabaseClient
+      .from("messages")
+      .select("*")
+      .eq("room", currentRoom)
+      .order("created_at", { ascending: true });
 
-    messages.forEach(message => {
+    if (error) throw error;
+
+    data.forEach(message => {
       addMsg(
         message.name,
         message.text,
-        message.name === username
+        message.name === username,
+        message
       );
     });
 
@@ -101,7 +91,15 @@ async function renderMessages() {
   }
 }
 
-function addMsg(name, text, mine) {
+function addMsg(name, text, mine, message = null) {
+  const key = message
+    ? `${message.room}|${message.name}|${message.text}|${message.created_at}`
+    : `sample|${name}|${text}`;
+
+  if (displayedMessages.has(key)) return;
+
+  displayedMessages.add(key);
+
   const d = document.createElement("div");
 
   d.className = "msg" + (mine ? " mine" : "");
@@ -134,25 +132,65 @@ async function send() {
   if (!text || !username) return;
 
   try {
-    await dbRequest("messages", {
-      method: "POST",
-      body: JSON.stringify({
+    const createdAt = Date.now();
+
+    const { data, error } = await supabaseClient
+      .from("messages")
+      .insert({
         room: currentRoom,
         name: username,
         text: text,
-        created_at: Date.now()
+        created_at: createdAt
       })
-    });
+      .select();
 
-    addMsg(username, text, true);
+    if (error) throw error;
+
+    if (data && data[0]) {
+      addMsg(username, text, true, data[0]);
+    }
 
     input.value = "";
-    $("#messages").scrollTop = 999999;
+    $("#messages").scrollTop = $("#messages").scrollHeight;
 
   } catch (error) {
     console.error("Send message error:", error);
     alert("Error: " + error.message);
   }
+}
+
+function setupRealtime() {
+  if (realtimeChannel) {
+    supabaseClient.removeChannel(realtimeChannel);
+    realtimeChannel = null;
+  }
+
+  realtimeChannel = supabaseClient
+    .channel("room-" + currentRoom)
+    .on(
+      "postgres_changes",
+      {
+        event: "INSERT",
+        schema: "public",
+        table: "messages",
+        filter: `room=eq.${currentRoom}`
+      },
+      payload => {
+        const message = payload.new;
+
+        addMsg(
+          message.name,
+          message.text,
+          message.name === username,
+          message
+        );
+
+        $("#messages").scrollTop = $("#messages").scrollHeight;
+      }
+    )
+    .subscribe(status => {
+      console.log("Realtime:", status);
+    });
 }
 
 $("#joinBtn").onclick = () => enter();
@@ -174,6 +212,7 @@ document.querySelectorAll(".room").forEach(button => {
     currentRoom = button.dataset.room;
     renderRoom();
     renderMessages();
+    setupRealtime();
   };
 });
 
@@ -186,6 +225,11 @@ $("#messageInput").addEventListener("keydown", e => {
 });
 
 $("#backBtn").onclick = () => {
+  if (realtimeChannel) {
+    supabaseClient.removeChannel(realtimeChannel);
+    realtimeChannel = null;
+  }
+
   $("#chat").classList.add("hidden");
   $("#home").classList.remove("hidden");
 };
