@@ -11,6 +11,8 @@ const supabaseClient = window.supabase.createClient(
 let username = localStorage.getItem("vibechat_name") || "";
 let currentRoom = "Chill Zone";
 let realtimeChannel = null;
+let onlineUserId = null;
+
 const displayedMessages = new Set();
 
 const roomIcons = {
@@ -26,6 +28,29 @@ const samples = [
   ["Zayn", "This room is actually pretty chill 😎"],
   ["Pixel", "Heyyy everyone ✨"]
 ];
+
+async function joinOnlineUsers() {
+  try {
+    const { data, error } = await supabaseClient
+      .from("online_users")
+      .insert({
+        username: username,
+        room: currentRoom,
+        last_seen: Date.now()
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    onlineUserId = data.id;
+
+    console.log("Online user added:", data);
+
+  } catch (error) {
+    console.error("Online user error:", error);
+  }
+}
 
 function enter(room = currentRoom) {
   const name =
@@ -43,6 +68,8 @@ function enter(room = currentRoom) {
   renderRoom();
   renderMessages();
   setupRealtime();
+
+  joinOnlineUsers();
 }
 
 function renderRoom() {
@@ -213,6 +240,7 @@ document.querySelectorAll(".room").forEach(button => {
     renderRoom();
     renderMessages();
     setupRealtime();
+    joinOnlineUsers();
   };
 });
 
