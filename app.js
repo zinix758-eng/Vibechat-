@@ -20,30 +20,32 @@ const samples = [
   ["Pixel", "Heyyy everyone ✨"]
 ];
 
-async function supabaseRequest(path, options = {}) {
-  const response = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
-    ...options,
-    headers: {
-      "apikey": SUPABASE_KEY,
-      "Authorization": `Bearer ${SUPABASE_KEY}`,
-      "Content-Type": "application/json",
-      "Prefer": "return=representation",
-      ...(options.headers || {})
+async function dbRequest(path, options = {}) {
+  const response = await fetch(
+    `${SUPABASE_URL}/rest/v1/${path}`,
+    {
+      ...options,
+      headers: {
+        "apikey": SUPABASE_KEY,
+        "Authorization": `Bearer ${SUPABASE_KEY}`,
+        "Content-Type": "application/json",
+        "Prefer": "return=representation",
+        ...(options.headers || {})
+      }
     }
-  });
+  );
 
   if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(errorText);
+    const error = await response.text();
+    throw new Error(error);
   }
-
-  if (response.status === 204) return null;
 
   return response.json();
 }
 
 function enter(room = currentRoom) {
-  const name = ($("#nameInput").value.trim() || username || "Guest").slice(0, 20);
+  const name =
+    ($("#nameInput").value.trim() || username || "Guest").slice(0, 20);
 
   username = name;
   localStorage.setItem("vibechat_name", name);
@@ -63,29 +65,39 @@ function renderRoom() {
   $("#roomTitle").textContent =
     (roomIcons[currentRoom] || "💬") + " " + currentRoom;
 
-  document.querySelectorAll(".room").forEach(x =>
-    x.classList.toggle("active", x.dataset.room === currentRoom)
-  );
+  document.querySelectorAll(".room").forEach(x => {
+    x.classList.toggle(
+      "active",
+      x.dataset.room === currentRoom
+    );
+  });
 }
 
 async function renderMessages() {
   const box = $("#messages");
   box.innerHTML = "";
 
-  samples.forEach(([n, t]) => addMsg(n, t, false));
+  samples.forEach(([name, text]) => {
+    addMsg(name, text, false);
+  });
 
   try {
-    const messages = await supabaseRequest(
+    const messages = await dbRequest(
       `messages?room=eq.${encodeURIComponent(currentRoom)}&select=*&order=created_at.asc`
     );
 
-    messages.forEach(m => {
-      addMsg(m.name, m.text, m.name === username);
+    messages.forEach(message => {
+      addMsg(
+        message.name,
+        message.text,
+        message.name === username
+      );
     });
 
     box.scrollTop = box.scrollHeight;
+
   } catch (error) {
-    console.error("Messages load error:", error);
+    console.error("Load messages error:", error);
   }
 }
 
@@ -102,8 +114,8 @@ function addMsg(name, text, mine) {
   $("#messages").appendChild(d);
 }
 
-function escapeHtml(s) {
-  return String(s).replace(
+function escapeHtml(value) {
+  return String(value).replace(
     /[&<>"']/g,
     c => ({
       "&": "&amp;",
@@ -119,11 +131,10 @@ async function send() {
   const input = $("#messageInput");
   const text = input.value.trim();
 
-  if (!text) return;
-  if (!username) return;
+  if (!text || !username) return;
 
   try {
-    await supabaseRequest("messages", {
+    await dbRequest("messages", {
       method: "POST",
       body: JSON.stringify({
         room: currentRoom,
@@ -138,24 +149,28 @@ async function send() {
     $("#messages").scrollTop = 999999;
 
   } catch (error) {
-    console.error("Message send error:", error);
-    alert("Message send nahi hua. Supabase settings check karo.");
+    console.error("Send message error:", error);
+    alert("Message send nahi hua.");
   }
 }
 
 $("#joinBtn").onclick = () => enter();
 
 $("#nameInput").addEventListener("keydown", e => {
-  if (e.key === "Enter") enter();
+  if (e.key === "Enter") {
+    enter();
+  }
 });
 
-document.querySelectorAll(".roomcard").forEach(b => {
-  b.onclick = () => enter(b.dataset.room);
+document.querySelectorAll(".roomcard").forEach(button => {
+  button.onclick = () => {
+    enter(button.dataset.room);
+  };
 });
 
-document.querySelectorAll(".room").forEach(b => {
-  b.onclick = () => {
-    currentRoom = b.dataset.room;
+document.querySelectorAll(".room").forEach(button => {
+  button.onclick = () => {
+    currentRoom = button.dataset.room;
     renderRoom();
     renderMessages();
   };
@@ -164,7 +179,9 @@ document.querySelectorAll(".room").forEach(b => {
 $("#sendBtn").onclick = send;
 
 $("#messageInput").addEventListener("keydown", e => {
-  if (e.key === "Enter") send();
+  if (e.key === "Enter") {
+    send();
+  }
 });
 
 $("#backBtn").onclick = () => {
@@ -172,19 +189,23 @@ $("#backBtn").onclick = () => {
   $("#home").classList.remove("hidden");
 };
 
-$("#emojiBtn").onclick = () =>
+$("#emojiBtn").onclick = () => {
   $("#emojiPanel").classList.toggle("hidden");
+};
 
 $("#emojiPanel").onclick = e => {
-  if (e.target.textContent.trim()) {
-    const i = $("#messageInput");
-    i.value += e.target.textContent.trim();
-    i.focus();
+  const emoji = e.target.textContent.trim();
+
+  if (emoji) {
+    const input = $("#messageInput");
+    input.value += emoji;
+    input.focus();
   }
 };
 
-$("#themeBtn").onclick = () =>
+$("#themeBtn").onclick = () => {
   document.body.classList.toggle("light");
+};
 
 if (username) {
   $("#nameInput").value = username;
