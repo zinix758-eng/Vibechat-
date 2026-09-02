@@ -4,73 +4,288 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>VibeChat — Version 1</title>
+
 <link rel="stylesheet" href="style.css">
+
+<!-- Supabase -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
+
 <body>
+
 <div id="app">
+
   <header class="topbar">
-    <div class="brand"><span class="logo">✦</span><div><b>VibeChat</b><small>Connect • Chat • Vibe</small></div></div>
+    <div class="brand">
+      <span class="logo">✦</span>
+      <div>
+        <b>VibeChat</b>
+        <small>Connect • Chat • Vibe</small>
+      </div>
+    </div>
+
     <button id="themeBtn" class="iconbtn" title="Toggle theme">☾</button>
   </header>
 
+
   <main id="home" class="screen">
+
     <section class="hero">
+
       <div class="badge">✨ Welcome to VibeChat</div>
-      <h1>Find your people.<br><span>Start a vibe.</span></h1>
-      <p>A simple, modern chat space for communities and friends.</p>
+
+      <h1>
+        Find your people.<br>
+        <span>Start a vibe.</span>
+      </h1>
+
+      <p>
+        A simple, modern chat space for communities and friends.
+      </p>
+
       <div class="joinbox">
-        <input id="nameInput" maxlength="20" placeholder="Enter your username">
-        <button id="joinBtn">Enter Chat →</button>
+        <input
+          id="nameInput"
+          maxlength="20"
+          placeholder="Enter your username"
+        >
+
+        <button id="joinBtn">
+          Enter Chat →
+        </button>
       </div>
-      <p class="hint">No account needed in this demo.</p>
+
+      <p class="hint">
+        No account needed in this demo.
+      </p>
+
     </section>
+
+
     <section class="rooms-preview">
+
       <h2>Popular Rooms</h2>
+
       <div class="roomgrid">
-        <button class="roomcard" data-room="Chill Zone"><span>🌙</span><b>Chill Zone</b><small>128 online</small></button>
-        <button class="roomcard" data-room="Music Lounge"><span>🎵</span><b>Music Lounge</b><small>84 online</small></button>
-        <button class="roomcard" data-room="Gaming"><span>🎮</span><b>Gaming</b><small>63 online</small></button>
-        <button class="roomcard" data-room="Random"><span>💭</span><b>Random</b><small>41 online</small></button>
+
+        <button
+          class="roomcard"
+          data-room="Chill Zone"
+        >
+          <span>🌙</span>
+          <b>Chill Zone</b>
+          <small>128 online</small>
+        </button>
+
+
+        <button
+          class="roomcard"
+          data-room="Music Lounge"
+        >
+          <span>🎵</span>
+          <b>Music Lounge</b>
+          <small>84 online</small>
+        </button>
+
+
+        <button
+          class="roomcard"
+          data-room="Gaming"
+        >
+          <span>🎮</span>
+          <b>Gaming</b>
+          <small>63 online</small>
+        </button>
+
+
+        <button
+          class="roomcard"
+          data-room="Random"
+        >
+          <span>💭</span>
+          <b>Random</b>
+          <small>41 online</small>
+        </button>
+
       </div>
+
     </section>
+
   </main>
+
+
 
   <main id="chat" class="chat-layout hidden">
+
     <aside class="sidebar">
-      <button id="backBtn" class="back">← Rooms</button>
+
+      <button id="backBtn" class="back">
+        ← Rooms
+      </button>
+
       <h3>Rooms</h3>
+
       <div id="roomList">
-        <button class="room active" data-room="Chill Zone">🌙 Chill Zone <em>128</em></button>
-        <button class="room" data-room="Music Lounge">🎵 Music Lounge <em>84</em></button>
-        <button class="room" data-room="Gaming">🎮 Gaming <em>63</em></button>
-        <button class="room" data-room="Random">💭 Random <em>41</em></button>
+
+        <button
+          class="room active"
+          data-room="Chill Zone"
+        >
+          🌙 Chill Zone <em>128</em>
+        </button>
+
+
+        <button
+          class="room"
+          data-room="Music Lounge"
+        >
+          🎵 Music Lounge <em>84</em>
+        </button>
+
+
+        <button
+          class="room"
+          data-room="Gaming"
+        >
+          🎮 Gaming <em>63</em>
+        </button>
+
+
+        <button
+          class="room"
+          data-room="Random"
+        >
+          💭 Random <em>41</em>
+        </button>
+
       </div>
+
     </aside>
+
+
 
     <section class="chat">
+
       <div class="chathead">
-        <div><b id="roomTitle">🌙 Chill Zone</b><small><span class="dot"></span> 128 people online</small></div>
-        <button id="usersBtn" class="users">👥 <span id="onlineCount">128</span></button>
+
+        <div>
+
+          <b id="roomTitle">
+            🌙 Chill Zone
+          </b>
+
+          <small>
+            <span class="dot"></span>
+            128 people online
+          </small>
+
+        </div>
+
+
+        <button
+          id="usersBtn"
+          class="users"
+        >
+          👥
+          <span id="onlineCount">128</span>
+        </button>
+
       </div>
-      <div id="messages" class="messages"></div>
+
+
+
+      <div
+        id="messages"
+        class="messages"
+      ></div>
+
+
+
       <div class="composer">
-        <button id="emojiBtn" class="iconbtn">☺</button>
-        <input id="messageInput" maxlength="300" placeholder="Write a message…">
-        <button id="sendBtn" class="send">➤</button>
+
+        <button
+          id="emojiBtn"
+          class="iconbtn"
+        >
+          ☺
+        </button>
+
+
+        <input
+          id="messageInput"
+          maxlength="300"
+          placeholder="Write a message…"
+        >
+
+
+        <button
+          id="sendBtn"
+          class="send"
+        >
+          ➤
+        </button>
+
       </div>
-      <div id="emojiPanel" class="emoji-panel hidden">😀 😃 😄 😁 😆 😅 😂 🙂 🙃 😉 😊 😎 😍 🥳 🔥 ❤️ ✨ 👍 👀 🎮 🎵</div>
+
+
+
+      <div
+        id="emojiPanel"
+        class="emoji-panel hidden"
+      >
+        😀 😃 😄 😁 😆 😅 😂 🙂 🙃 😉 😊 😎 😍 🥳 🔥 ❤️ ✨ 👍 👀 🎮 🎵
+      </div>
+
     </section>
 
-    <aside id="people" class="people">
+
+
+    <aside
+      id="people"
+      class="people"
+    >
+
       <h3>Online now</h3>
-      <div class="me">🟢 <b id="meName">Guest</b><small>You</small></div>
-      <div class="person">🟢 Nova <small>Chilling</small></div>
-      <div class="person">🟢 Arya <small>Listening to music</small></div>
-      <div class="person">🟢 Zayn <small>Gaming</small></div>
-      <div class="person">🟢 Pixel <small>Online</small></div>
+
+
+      <div class="me">
+        🟢
+        <b id="meName">Guest</b>
+        <small>You</small>
+      </div>
+
+
+      <div class="person">
+        🟢 Nova
+        <small>Chilling</small>
+      </div>
+
+
+      <div class="person">
+        🟢 Arya
+        <small>Listening to music</small>
+      </div>
+
+
+      <div class="person">
+        🟢 Zayn
+        <small>Gaming</small>
+      </div>
+
+
+      <div class="person">
+        🟢 Pixel
+        <small>Online</small>
+      </div>
+
     </aside>
+
   </main>
+
 </div>
+
+
 <script src="app.js"></script>
+
 </body>
 </html>
