@@ -39,6 +39,7 @@ const samples = [
   ["Pixel", "Heyyy everyone ✨"]
 ];
 
+
 /* =========================
    HELPERS
 ========================= */
@@ -80,8 +81,7 @@ async function loadRoomTopic() {
 
     if (data && data.topic) {
 
-      topicElement.textContent =
-        data.topic;
+      topicElement.textContent = data.topic;
 
     } else {
 
@@ -242,11 +242,20 @@ async function loadOnlineUsers() {
     const count =
       data.length;
 
-    $("#onlineCount")
-      .textContent = count;
+    const countElement =
+      $("#onlineCount");
+
+    if (countElement) {
+
+      countElement.textContent =
+        count;
+
+    }
 
     const people =
       $("#people");
+
+    if (!people) return;
 
     people.innerHTML = `
       <h3>Online now</h3>
@@ -358,9 +367,11 @@ async function enter(
     .classList
     .remove("hidden");
 
-  $("#meName")
-    .textContent =
-    username;
+  /*
+    IMPORTANT:
+    #meName removed because
+    it does not exist in index.html.
+  */
 
   renderRoom();
 
