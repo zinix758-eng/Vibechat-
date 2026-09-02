@@ -25,6 +25,13 @@ const roomIcons = {
   "Random": "💭"
 };
 
+const roomTopics = {
+  "Chill Zone": "Talk • Chill • Make new friends",
+  "Music Lounge": "Music • Songs • Vibes",
+  "Gaming": "Gaming • Fun • Squad",
+  "Random": "Random talks • Anything goes"
+};
+
 const samples = [
   ["Nova", "Welcome everyone! 👋"],
   ["Arya", "Anyone listening to something good? 🎵"],
@@ -49,14 +56,62 @@ function escapeHtml(value) {
   );
 }
 
+
+/* =========================
+   ROOM TOPIC
+========================= */
+
+async function loadRoomTopic() {
+
+  const topicElement = $("#roomTopic");
+
+  if (!topicElement) return;
+
+  try {
+
+    const { data, error } =
+      await supabaseClient
+        .from("room_topics")
+        .select("topic")
+        .eq("room", currentRoom)
+        .maybeSingle();
+
+    if (error) throw error;
+
+    if (data && data.topic) {
+
+      topicElement.textContent =
+        data.topic;
+
+    } else {
+
+      topicElement.textContent =
+        roomTopics[currentRoom] || "";
+
+    }
+
+  } catch (error) {
+
+    console.error(
+      "Room topic error:",
+      error
+    );
+
+    topicElement.textContent =
+      roomTopics[currentRoom] || "";
+
+  }
+}
+
+
 /* =========================
    ONLINE USERS
 ========================= */
 
 async function joinOnlineUsers() {
+
   try {
 
-    // Same username ki purani entries delete karo
     await supabaseClient
       .from("online_users")
       .delete()
@@ -64,7 +119,6 @@ async function joinOnlineUsers() {
 
     onlineUserId = null;
 
-    // New single online entry
     const { data, error } =
       await supabaseClient
         .from("online_users")
@@ -91,6 +145,7 @@ async function joinOnlineUsers() {
 
   }
 }
+
 
 async function updateHeartbeat() {
 
@@ -135,6 +190,7 @@ async function updateHeartbeat() {
   }
 }
 
+
 function startHeartbeat() {
 
   if (heartbeatTimer) {
@@ -151,6 +207,7 @@ function startHeartbeat() {
       15000
     );
 }
+
 
 async function loadOnlineUsers() {
 
@@ -185,30 +242,8 @@ async function loadOnlineUsers() {
     const count =
       data.length;
 
-    /* Users button count */
-
     $("#onlineCount")
       .textContent = count;
-
-    /* Chat header count */
-
-    const roomTitle =
-      $("#roomTitle");
-
-    const header =
-      roomTitle.parentElement;
-
-    const onlineText =
-      header.querySelector("small");
-
-    if (onlineText) {
-
-      onlineText.innerHTML =
-        `<span class="dot"></span> ${count} people online`;
-
-    }
-
-    /* Online users list */
 
     const people =
       $("#people");
@@ -252,6 +287,7 @@ async function loadOnlineUsers() {
   }
 }
 
+
 function setupOnlineRealtime() {
 
   if (onlineChannel) {
@@ -288,6 +324,7 @@ function setupOnlineRealtime() {
       .subscribe();
 
 }
+
 
 /* =========================
    ENTER CHAT
@@ -327,6 +364,8 @@ async function enter(
 
   renderRoom();
 
+  await loadRoomTopic();
+
   await joinOnlineUsers();
 
   startHeartbeat();
@@ -338,6 +377,7 @@ async function enter(
   setupRealtime();
 
 }
+
 
 /* =========================
    ROOMS
@@ -366,6 +406,7 @@ function renderRoom() {
     });
 
 }
+
 
 /* =========================
    LOAD MESSAGES
@@ -441,6 +482,7 @@ async function renderMessages() {
 
 }
 
+
 function addMsg(
   name,
   text,
@@ -488,6 +530,7 @@ function addMsg(
     .appendChild(d);
 
 }
+
 
 /* =========================
    SEND MESSAGE
@@ -568,6 +611,7 @@ async function send() {
 
 }
 
+
 /* =========================
    MESSAGE REALTIME
 ========================= */
@@ -634,6 +678,7 @@ function setupRealtime() {
 
 }
 
+
 /* =========================
    USERS BUTTON
 ========================= */
@@ -647,6 +692,7 @@ $("#usersBtn").onclick =
 
   };
 
+
 /* =========================
    JOIN BUTTON
 ========================= */
@@ -657,6 +703,7 @@ $("#joinBtn").onclick =
     enter();
 
   };
+
 
 $("#nameInput")
   .addEventListener(
@@ -673,6 +720,7 @@ $("#nameInput")
 
     }
   );
+
 
 /* =========================
    ROOM CARDS
@@ -693,6 +741,7 @@ document
 
   });
 
+
 /* =========================
    ROOM SIDEBAR
 ========================= */
@@ -709,6 +758,8 @@ document
 
         renderRoom();
 
+        await loadRoomTopic();
+
         await joinOnlineUsers();
 
         setupOnlineRealtime();
@@ -721,12 +772,14 @@ document
 
   });
 
+
 /* =========================
    SEND BUTTON
 ========================= */
 
 $("#sendBtn").onclick =
   send;
+
 
 $("#messageInput")
   .addEventListener(
@@ -743,6 +796,7 @@ $("#messageInput")
 
     }
   );
+
 
 /* =========================
    BACK BUTTON
@@ -811,6 +865,7 @@ $("#backBtn").onclick =
 
   };
 
+
 /* =========================
    EMOJI
 ========================= */
@@ -823,6 +878,7 @@ $("#emojiBtn").onclick =
       .toggle("hidden");
 
   };
+
 
 $("#emojiPanel").onclick =
   e => {
@@ -843,6 +899,7 @@ $("#emojiPanel").onclick =
 
   };
 
+
 /* =========================
    THEME
 ========================= */
@@ -855,6 +912,7 @@ $("#themeBtn").onclick =
       .toggle("light");
 
   };
+
 
 /* =========================
    START
