@@ -137,10 +137,11 @@ async function send() {
     await dbRequest("messages", {
       method: "POST",
       body: JSON.stringify({
-        room: currentRoom,
-        name: username,
-        text: text
-      })
+  room: currentRoom,
+  name: username,
+  text: text,
+  created_at: new Date().toISOString()
+})
     });
 
     addMsg(username, text, true);
