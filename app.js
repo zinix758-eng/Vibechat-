@@ -1,3 +1,10 @@
+const SUPABASE_URL = "https://uopwsaymtomnxfmacsnu.supabase.co";
+const SUPABASE_KEY = "YAHAN_PUBLISHABLE_KEY";
+
+const supabaseClient = window.supabase.createClient(
+  SUPABASE_URL,
+  SUPABASE_KEY
+);
 const $=s=>document.querySelector(s);
 let username=localStorage.getItem("vibechat_name")||"";
 let currentRoom="Chill Zone";
