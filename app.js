@@ -81,7 +81,8 @@ async function loadRoomTopic() {
 
     if (data && data.topic) {
 
-      topicElement.textContent = data.topic;
+      topicElement.textContent =
+        data.topic;
 
     } else {
 
@@ -366,12 +367,6 @@ async function enter(
   $("#chat")
     .classList
     .remove("hidden");
-
-  /*
-    IMPORTANT:
-    #meName removed because
-    it does not exist in index.html.
-  */
 
   renderRoom();
 
@@ -764,18 +759,61 @@ document
     button.onclick =
       async () => {
 
-        currentRoom =
+        const newRoom =
           button.dataset.room;
+
+        if (!newRoom) return;
+
+
+        /* Remove user from old room */
+
+        if (onlineUserId) {
+
+          await supabaseClient
+            .from("online_users")
+            .delete()
+            .eq(
+              "id",
+              onlineUserId
+            );
+
+          onlineUserId = null;
+
+        }
+
+
+        /* Change room */
+
+        currentRoom =
+          newRoom;
+
+
+        /* Update room UI */
 
         renderRoom();
 
+
+        /* Load new room topic */
+
         await loadRoomTopic();
+
+
+        /* Join new room */
 
         await joinOnlineUsers();
 
+
+        /* Realtime online users */
+
         setupOnlineRealtime();
 
-        renderMessages();
+
+        /* Load new room messages */
+
+        await renderMessages();
+
+
+        /* Realtime messages */
 
         setupRealtime();
 
