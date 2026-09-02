@@ -1,50 +1,193 @@
-const $=s=>document.querySelector(s);
-let username=localStorage.getItem("vibechat_name")||"";
-let currentRoom="Chill Zone";
-const roomIcons={"Chill Zone":"🌙","Music Lounge":"🎵","Gaming":"🎮","Random":"💭"};
-const samples=[
-  ["Nova","Welcome everyone! 👋"],["Arya","Anyone listening to something good? 🎵"],["Zayn","This room is actually pretty chill 😎"],["Pixel","Heyyy everyone ✨"]
+const $ = s => document.querySelector(s);
+
+const SUPABASE_URL = "https://uopwsaymtomnxfmacsnu.supabase.co";
+const SUPABASE_KEY = "sb_publishable_z6vlfZ8IsWgM4clPEWIavA_YBV4GlQ2";
+
+let username = localStorage.getItem("vibechat_name") || "";
+let currentRoom = "Chill Zone";
+
+const roomIcons = {
+  "Chill Zone": "🌙",
+  "Music Lounge": "🎵",
+  "Gaming": "🎮",
+  "Random": "💭"
+};
+
+const samples = [
+  ["Nova", "Welcome everyone! 👋"],
+  ["Arya", "Anyone listening to something good? 🎵"],
+  ["Zayn", "This room is actually pretty chill 😎"],
+  ["Pixel", "Heyyy everyone ✨"]
 ];
-function enter(room=currentRoom){
-  const name=($("#nameInput").value.trim()||username||"Guest").slice(0,20);
-  username=name; localStorage.setItem("vibechat_name",name);
-  currentRoom=room;
-  $("#home").classList.add("hidden"); $("#chat").classList.remove("hidden");
-  $("#meName").textContent=name; renderRoom(); renderMessages();
+
+async function supabaseRequest(path, options = {}) {
+  const response = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+    ...options,
+    headers: {
+      "apikey": SUPABASE_KEY,
+      "Authorization": `Bearer ${SUPABASE_KEY}`,
+      "Content-Type": "application/json",
+      "Prefer": "return=representation",
+      ...(options.headers || {})
+    }
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(errorText);
+  }
+
+  if (response.status === 204) return null;
+
+  return response.json();
 }
-function renderRoom(){
-  $("#roomTitle").textContent=(roomIcons[currentRoom]||"💬")+" "+currentRoom;
-  document.querySelectorAll(".room").forEach(x=>x.classList.toggle("active",x.dataset.room===currentRoom));
+
+function enter(room = currentRoom) {
+  const name = ($("#nameInput").value.trim() || username || "Guest").slice(0, 20);
+
+  username = name;
+  localStorage.setItem("vibechat_name", name);
+
+  currentRoom = room;
+
+  $("#home").classList.add("hidden");
+  $("#chat").classList.remove("hidden");
+
+  $("#meName").textContent = name;
+
+  renderRoom();
+  renderMessages();
 }
-function renderMessages(){
-  const box=$("#messages"); box.innerHTML="";
-  samples.forEach(([n,t])=>addMsg(n,t,false));
-  const saved=JSON.parse(localStorage.getItem("vc_"+currentRoom)||"[]");
-  saved.forEach(m=>addMsg(m.name,m.text,m.name===username));
-  box.scrollTop=box.scrollHeight;
+
+function renderRoom() {
+  $("#roomTitle").textContent =
+    (roomIcons[currentRoom] || "💬") + " " + currentRoom;
+
+  document.querySelectorAll(".room").forEach(x =>
+    x.classList.toggle("active", x.dataset.room === currentRoom)
+  );
 }
-function addMsg(name,text,mine){
-  const d=document.createElement("div"); d.className="msg"+(mine?" mine":"");
-  d.innerHTML=`<div class="meta">${escapeHtml(name)}</div><div class="bubble">${escapeHtml(text)}</div>`;
+
+async function renderMessages() {
+  const box = $("#messages");
+  box.innerHTML = "";
+
+  samples.forEach(([n, t]) => addMsg(n, t, false));
+
+  try {
+    const messages = await supabaseRequest(
+      `messages?room=eq.${encodeURIComponent(currentRoom)}&select=*&order=created_at.asc`
+    );
+
+    messages.forEach(m => {
+      addMsg(m.name, m.text, m.name === username);
+    });
+
+    box.scrollTop = box.scrollHeight;
+  } catch (error) {
+    console.error("Messages load error:", error);
+  }
+}
+
+function addMsg(name, text, mine) {
+  const d = document.createElement("div");
+
+  d.className = "msg" + (mine ? " mine" : "");
+
+  d.innerHTML = `
+    <div class="meta">${escapeHtml(name)}</div>
+    <div class="bubble">${escapeHtml(text)}</div>
+  `;
+
   $("#messages").appendChild(d);
 }
-function escapeHtml(s){return s.replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]))}
-function send(){
-  const input=$("#messageInput"), text=input.value.trim(); if(!text)return;
-  if(!username) return;
-  const key="vc_"+currentRoom, arr=JSON.parse(localStorage.getItem(key)||"[]");
-  arr.push({name:username,text}); localStorage.setItem(key,JSON.stringify(arr.slice(-100)));
-  addMsg(username,text,true); input.value=""; $("#messages").scrollTop=999999;
+
+function escapeHtml(s) {
+  return String(s).replace(
+    /[&<>"']/g,
+    c => ({
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;",
+      "'": "&#039;"
+    }[c])
+  );
 }
-$("#joinBtn").onclick=()=>enter();
-$("#nameInput").addEventListener("keydown",e=>{if(e.key==="Enter")enter()});
-document.querySelectorAll(".roomcard").forEach(b=>b.onclick=()=>enter(b.dataset.room));
-document.querySelectorAll(".room").forEach(b=>b.onclick=()=>{currentRoom=b.dataset.room;renderRoom();renderMessages()});
-$("#sendBtn").onclick=send;
-$("#messageInput").addEventListener("keydown",e=>{if(e.key==="Enter")send()});
-$("#backBtn").onclick=()=>{$("#chat").classList.add("hidden");$("#home").classList.remove("hidden")};
-$("#emojiBtn").onclick=()=>$("#emojiPanel").classList.toggle("hidden");
-$("#emojiPanel").onclick=e=>{if(e.target.textContent.trim()){const i=$("#messageInput");i.value+=e.target.textContent.trim();i.focus()}};
-$("#themeBtn").onclick=()=>document.body.classList.toggle("light");
-if(username) $("#nameInput").value=username;
+
+async function send() {
+  const input = $("#messageInput");
+  const text = input.value.trim();
+
+  if (!text) return;
+  if (!username) return;
+
+  try {
+    await supabaseRequest("messages", {
+      method: "POST",
+      body: JSON.stringify({
+        room: currentRoom,
+        name: username,
+        text: text
+      })
+    });
+
+    addMsg(username, text, true);
+
+    input.value = "";
+    $("#messages").scrollTop = 999999;
+
+  } catch (error) {
+    console.error("Message send error:", error);
+    alert("Message send nahi hua. Supabase settings check karo.");
+  }
+}
+
+$("#joinBtn").onclick = () => enter();
+
+$("#nameInput").addEventListener("keydown", e => {
+  if (e.key === "Enter") enter();
+});
+
+document.querySelectorAll(".roomcard").forEach(b => {
+  b.onclick = () => enter(b.dataset.room);
+});
+
+document.querySelectorAll(".room").forEach(b => {
+  b.onclick = () => {
+    currentRoom = b.dataset.room;
+    renderRoom();
+    renderMessages();
+  };
+});
+
+$("#sendBtn").onclick = send;
+
+$("#messageInput").addEventListener("keydown", e => {
+  if (e.key === "Enter") send();
+});
+
+$("#backBtn").onclick = () => {
+  $("#chat").classList.add("hidden");
+  $("#home").classList.remove("hidden");
+};
+
+$("#emojiBtn").onclick = () =>
+  $("#emojiPanel").classList.toggle("hidden");
+
+$("#emojiPanel").onclick = e => {
+  if (e.target.textContent.trim()) {
+    const i = $("#messageInput");
+    i.value += e.target.textContent.trim();
+    i.focus();
+  }
+};
+
+$("#themeBtn").onclick = () =>
+  document.body.classList.toggle("light");
+
+if (username) {
+  $("#nameInput").value = username;
+}
+
 renderRoom();
