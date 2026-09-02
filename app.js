@@ -56,12 +56,7 @@ function escapeHtml(value) {
 async function joinOnlineUsers() {
   try {
 
-    /*
-      IMPORTANT:
-      Same username ki purani sari entries delete karo.
-      Isse refresh ke baad duplicate username nahi banega.
-    */
-
+    // Same username ki purani entries delete karo
     await supabaseClient
       .from("online_users")
       .delete()
@@ -69,17 +64,17 @@ async function joinOnlineUsers() {
 
     onlineUserId = null;
 
-    /* Nayi single online entry create karo */
-
-    const { data, error } = await supabaseClient
-      .from("online_users")
-      .insert({
-        username: username,
-        room: currentRoom,
-        last_seen: Date.now()
-      })
-      .select()
-      .single();
+    // New single online entry
+    const { data, error } =
+      await supabaseClient
+        .from("online_users")
+        .insert({
+          username: username,
+          room: currentRoom,
+          last_seen: Date.now()
+        })
+        .select()
+        .single();
 
     if (error) throw error;
 
@@ -103,14 +98,18 @@ async function updateHeartbeat() {
 
   try {
 
-    const { error } = await supabaseClient
-      .from("online_users")
-      .update({
-        last_seen: Date.now(),
-        room: currentRoom,
-        username: username
-      })
-      .eq("id", onlineUserId);
+    const { error } =
+      await supabaseClient
+        .from("online_users")
+        .update({
+          last_seen: Date.now(),
+          room: currentRoom,
+          username: username
+        })
+        .eq(
+          "id",
+          onlineUserId
+        );
 
     if (error) {
 
@@ -119,12 +118,8 @@ async function updateHeartbeat() {
         error
       );
 
-      /*
-        Agar current row delete ho gayi ho,
-        to dobara create kar do.
-      */
-
       await joinOnlineUsers();
+
       return;
     }
 
@@ -187,8 +182,33 @@ async function loadOnlineUsers() {
 
     if (error) throw error;
 
-    $("#onlineCount").textContent =
+    const count =
       data.length;
+
+    /* Users button count */
+
+    $("#onlineCount")
+      .textContent = count;
+
+    /* Chat header count */
+
+    const roomTitle =
+      $("#roomTitle");
+
+    const header =
+      roomTitle.parentElement;
+
+    const onlineText =
+      header.querySelector("small");
+
+    if (onlineText) {
+
+      onlineText.innerHTML =
+        `<span class="dot"></span> ${count} people online`;
+
+    }
+
+    /* Online users list */
 
     const people =
       $("#people");
