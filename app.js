@@ -150,7 +150,7 @@ async function send() {
 
   } catch (error) {
     console.error("Send message error:", error);
-    alert("Message send nahi hua.");
+    alert("Error: " + error.message);
   }
 }
 
