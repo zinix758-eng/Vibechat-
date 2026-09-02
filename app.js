@@ -1,4 +1,3 @@
-
 const $=s=>document.querySelector(s);
 let username=localStorage.getItem("vibechat_name")||"";
 let currentRoom="Chill Zone";
