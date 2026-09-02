@@ -1,5 +1,4 @@
 const SUPABASE_URL = "https://uopwsaymtomnxfmacsnu.supabase.co";
-const SUPABASE_KEY = "YAHAN_PUBLISHABLE_KEY";
 
 const supabaseClient = window.supabase.createClient(
   SUPABASE_URL,
