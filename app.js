@@ -10,9 +10,11 @@ const supabaseClient = window.supabase.createClient(
 
 let username = localStorage.getItem("vibechat_name") || "";
 let currentRoom = "Chill Zone";
+
 let realtimeChannel = null;
 let onlineChannel = null;
 let onlineUserId = null;
+let heartbeatTimer = null;
 
 const displayedMessages = new Set();
 
@@ -29,6 +31,10 @@ const samples = [
   ["Zayn", "This room is actually pretty chill 😎"],
   ["Pixel", "Heyyy everyone ✨"]
 ];
+
+/* =========================
+   HELPERS
+========================= */
 
 function escapeHtml(value) {
   return String(value).replace(
@@ -49,11 +55,14 @@ function escapeHtml(value) {
 
 async function joinOnlineUsers() {
   try {
+    // इस browser की पुरानी entry हटाओ
     if (onlineUserId) {
       await supabaseClient
         .from("online_users")
         .delete()
         .eq("id", onlineUserId);
+
+      onlineUserId = null;
     }
 
     const { data, error } = await supabaseClient
@@ -77,12 +86,52 @@ async function joinOnlineUsers() {
   }
 }
 
+async function updateHeartbeat() {
+  if (!onlineUserId) return;
+
+  try {
+    const { error } = await supabaseClient
+      .from("online_users")
+      .update({
+        last_seen: Date.now(),
+        room: currentRoom,
+        username: username
+      })
+      .eq("id", onlineUserId);
+
+    if (error) {
+      console.error("Heartbeat error:", error);
+    }
+
+    await loadOnlineUsers();
+
+  } catch (error) {
+    console.error("Heartbeat error:", error);
+  }
+}
+
+function startHeartbeat() {
+  if (heartbeatTimer) {
+    clearInterval(heartbeatTimer);
+  }
+
+  heartbeatTimer = setInterval(() => {
+    updateHeartbeat();
+  }, 15000);
+}
+
 async function loadOnlineUsers() {
   try {
+    const cutoff = Date.now() - 45000;
+
     const { data, error } = await supabaseClient
       .from("online_users")
-      .select("id, username")
-      .eq("room", currentRoom);
+      .select("id, username, last_seen")
+      .eq("room", currentRoom)
+      .gt("last_seen", cutoff)
+      .order("last_seen", {
+        ascending: false
+      });
 
     if (error) throw error;
 
@@ -98,51 +147,71 @@ async function loadOnlineUsers() {
       const div = document.createElement("div");
 
       div.className =
-        user.id === onlineUserId ? "me" : "person";
+        user.id === onlineUserId
+          ? "me"
+          : "person";
 
       div.innerHTML = `
         🟢 <b>${escapeHtml(user.username)}</b>
-        <small>${user.id === onlineUserId ? "You" : "Online"}</small>
+        <small>
+          ${user.id === onlineUserId ? "You" : "Online"}
+        </small>
       `;
 
       people.appendChild(div);
     });
 
   } catch (error) {
-    console.error("Load online users error:", error);
+    console.error(
+      "Load online users error:",
+      error
+    );
   }
 }
 
 function setupOnlineRealtime() {
   if (onlineChannel) {
-    supabaseClient.removeChannel(onlineChannel);
+    supabaseClient.removeChannel(
+      onlineChannel
+    );
+
     onlineChannel = null;
   }
 
-  onlineChannel = supabaseClient
-    .channel("online-users-" + currentRoom)
-    .on(
-      "postgres_changes",
-      {
-        event: "*",
-        schema: "public",
-        table: "online_users"
-      },
-      () => {
-        loadOnlineUsers();
-      }
-    )
-    .subscribe();
+  onlineChannel =
+    supabaseClient
+      .channel(
+        "online-users-" +
+        currentRoom +
+        "-" +
+        Date.now()
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "online_users"
+        },
+        () => {
+          loadOnlineUsers();
+        }
+      )
+      .subscribe();
 }
 
 /* =========================
-   ENTER ROOM
+   ENTER CHAT
 ========================= */
 
-function enter(room = currentRoom) {
+async function enter(room = currentRoom) {
+
   const name =
-    ($("#nameInput").value.trim() || username || "Guest")
-      .slice(0, 20);
+    (
+      $("#nameInput").value.trim() ||
+      username ||
+      "Guest"
+    ).slice(0, 20);
 
   username = name;
 
@@ -156,15 +225,20 @@ function enter(room = currentRoom) {
   $("#home").classList.add("hidden");
   $("#chat").classList.remove("hidden");
 
-  $("#meName").textContent = name;
+  $("#meName").textContent =
+    username;
 
   renderRoom();
+
+  await joinOnlineUsers();
+
+  startHeartbeat();
+
+  setupOnlineRealtime();
+
   renderMessages();
 
   setupRealtime();
-
-  joinOnlineUsers();
-  setupOnlineRealtime();
 }
 
 /* =========================
@@ -172,61 +246,95 @@ function enter(room = currentRoom) {
 ========================= */
 
 function renderRoom() {
+
   $("#roomTitle").textContent =
-    (roomIcons[currentRoom] || "💬") +
+    (
+      roomIcons[currentRoom] ||
+      "💬"
+    ) +
     " " +
     currentRoom;
 
-  document.querySelectorAll(".room").forEach(x => {
-    x.classList.toggle(
-      "active",
-      x.dataset.room === currentRoom
-    );
-  });
+  document
+    .querySelectorAll(".room")
+    .forEach(x => {
+
+      x.classList.toggle(
+        "active",
+        x.dataset.room === currentRoom
+      );
+
+    });
 }
 
 /* =========================
-   MESSAGES
+   LOAD MESSAGES
 ========================= */
 
 async function renderMessages() {
-  const box = $("#messages");
+
+  const box =
+    $("#messages");
 
   box.innerHTML = "";
+
   displayedMessages.clear();
 
-  samples.forEach(([name, text]) => {
-    addMsg(name, text, false);
-  });
+  samples.forEach(
+    ([name, text]) => {
+      addMsg(
+        name,
+        text,
+        false
+      );
+    }
+  );
 
   try {
-    const { data, error } =
+
+    const {
+      data,
+      error
+    } =
       await supabaseClient
         .from("messages")
         .select("*")
-        .eq("room", currentRoom)
-        .order("created_at", {
-          ascending: true
-        });
+        .eq(
+          "room",
+          currentRoom
+        )
+        .order(
+          "created_at",
+          {
+            ascending: true
+          }
+        );
 
     if (error) throw error;
 
-    data.forEach(message => {
-      addMsg(
-        message.name,
-        message.text,
-        message.name === username,
-        message
-      );
-    });
+    data.forEach(
+      message => {
 
-    box.scrollTop = box.scrollHeight;
+        addMsg(
+          message.name,
+          message.text,
+          message.name === username,
+          message
+        );
+
+      }
+    );
+
+    box.scrollTop =
+      box.scrollHeight;
 
   } catch (error) {
+
     console.error(
       "Load messages error:",
       error
     );
+
   }
 }
 
@@ -236,20 +344,30 @@ function addMsg(
   mine,
   message = null
 ) {
-  const key = message
-    ? `${message.room}|${message.name}|${message.text}|${message.created_at}`
-    : `sample|${name}|${text}`;
 
-  if (displayedMessages.has(key)) {
+  const key =
+    message
+      ? `${message.room}|${message.name}|${message.text}|${message.created_at}`
+      : `sample|${name}|${text}`;
+
+  if (
+    displayedMessages.has(key)
+  ) {
     return;
   }
 
   displayedMessages.add(key);
 
-  const d = document.createElement("div");
+  const d =
+    document.createElement("div");
 
   d.className =
-    "msg" + (mine ? " mine" : "");
+    "msg" +
+    (
+      mine
+        ? " mine"
+        : ""
+    );
 
   d.innerHTML = `
     <div class="meta">
@@ -261,7 +379,8 @@ function addMsg(
     </div>
   `;
 
-  $("#messages").appendChild(d);
+  $("#messages")
+    .appendChild(d);
 }
 
 /* =========================
@@ -269,17 +388,29 @@ function addMsg(
 ========================= */
 
 async function send() {
-  const input = $("#messageInput");
-  const text = input.value.trim();
 
-  if (!text || !username) {
+  const input =
+    $("#messageInput");
+
+  const text =
+    input.value.trim();
+
+  if (
+    !text ||
+    !username
+  ) {
     return;
   }
 
   try {
-    const createdAt = Date.now();
 
-    const { data, error } =
+    const createdAt =
+      Date.now();
+
+    const {
+      data,
+      error
+    } =
       await supabaseClient
         .from("messages")
         .insert({
@@ -292,21 +423,29 @@ async function send() {
 
     if (error) throw error;
 
-    if (data && data[0]) {
+    if (
+      data &&
+      data[0]
+    ) {
+
       addMsg(
         username,
         text,
         true,
         data[0]
       );
+
     }
 
     input.value = "";
 
-    $("#messages").scrollTop =
-      $("#messages").scrollHeight;
+    $("#messages")
+      .scrollTop =
+      $("#messages")
+        .scrollHeight;
 
   } catch (error) {
+
     console.error(
       "Send message error:",
       error
@@ -316,6 +455,7 @@ async function send() {
       "Error: " +
       error.message
     );
+
   }
 }
 
@@ -324,17 +464,25 @@ async function send() {
 ========================= */
 
 function setupRealtime() {
+
   if (realtimeChannel) {
-    supabaseClient.removeChannel(
-      realtimeChannel
-    );
+
+    supabaseClient
+      .removeChannel(
+        realtimeChannel
+      );
 
     realtimeChannel = null;
   }
 
   realtimeChannel =
     supabaseClient
-      .channel("room-" + currentRoom)
+      .channel(
+        "room-" +
+        currentRoom +
+        "-" +
+        Date.now()
+      )
       .on(
         "postgres_changes",
         {
@@ -345,7 +493,9 @@ function setupRealtime() {
             `room=eq.${currentRoom}`
         },
         payload => {
-          const message = payload.new;
+
+          const message =
+            payload.new;
 
           addMsg(
             message.name,
@@ -354,153 +504,256 @@ function setupRealtime() {
             message
           );
 
-          $("#messages").scrollTop =
-            $("#messages").scrollHeight;
+          $("#messages")
+            .scrollTop =
+            $("#messages")
+              .scrollHeight;
+
         }
       )
-      .subscribe(status => {
-        console.log(
-          "Realtime:",
-          status
-        );
-      });
+      .subscribe(
+        status => {
+
+          console.log(
+            "Realtime:",
+            status
+          );
+
+        }
+      );
 }
 
 /* =========================
-   ONLINE USERS BUTTON
+   USERS BUTTON
 ========================= */
 
-$("#usersBtn").onclick = () => {
-  $("#people").classList.toggle("show");
-};
+$("#usersBtn").onclick =
+  () => {
+
+    $("#people")
+      .classList
+      .toggle("show");
+
+  };
 
 /* =========================
-   BUTTONS
+   JOIN BUTTON
 ========================= */
 
-$("#joinBtn").onclick = () => {
-  enter();
-};
+$("#joinBtn").onclick =
+  () => {
 
-$("#nameInput").addEventListener(
-  "keydown",
-  e => {
-    if (e.key === "Enter") {
-      enter();
+    enter();
+
+  };
+
+$("#nameInput")
+  .addEventListener(
+    "keydown",
+    e => {
+
+      if (
+        e.key === "Enter"
+      ) {
+
+        enter();
+
+      }
+
     }
-  }
-);
+  );
+
+/* =========================
+   ROOM CARDS
+========================= */
 
 document
   .querySelectorAll(".roomcard")
   .forEach(button => {
-    button.onclick = () => {
-      enter(button.dataset.room);
-    };
+
+    button.onclick =
+      () => {
+
+        enter(
+          button.dataset.room
+        );
+
+      };
+
   });
+
+/* =========================
+   ROOM SIDEBAR
+========================= */
 
 document
   .querySelectorAll(".room")
   .forEach(button => {
-    button.onclick = () => {
 
-      currentRoom =
-        button.dataset.room;
+    button.onclick =
+      async () => {
 
-      renderRoom();
-      renderMessages();
+        currentRoom =
+          button.dataset.room;
 
-      setupRealtime();
+        renderRoom();
 
-      joinOnlineUsers();
-      setupOnlineRealtime();
-    };
+        await joinOnlineUsers();
+
+        setupOnlineRealtime();
+
+        renderMessages();
+
+        setupRealtime();
+
+      };
+
   });
 
-$("#sendBtn").onclick = send;
+/* =========================
+   SEND BUTTON
+========================= */
 
-$("#messageInput").addEventListener(
-  "keydown",
-  e => {
-    if (e.key === "Enter") {
-      send();
+$("#sendBtn").onclick =
+  send;
+
+$("#messageInput")
+  .addEventListener(
+    "keydown",
+    e => {
+
+      if (
+        e.key === "Enter"
+      ) {
+
+        send();
+
+      }
+
     }
-  }
-);
+  );
 
 /* =========================
    BACK BUTTON
 ========================= */
 
-$("#backBtn").onclick = async () => {
+$("#backBtn").onclick =
+  async () => {
 
-  if (onlineUserId) {
-    await supabaseClient
-      .from("online_users")
-      .delete()
-      .eq("id", onlineUserId);
+    if (heartbeatTimer) {
 
-    onlineUserId = null;
-  }
+      clearInterval(
+        heartbeatTimer
+      );
 
-  if (realtimeChannel) {
-    supabaseClient.removeChannel(
-      realtimeChannel
-    );
+      heartbeatTimer =
+        null;
 
-    realtimeChannel = null;
-  }
+    }
 
-  if (onlineChannel) {
-    supabaseClient.removeChannel(
-      onlineChannel
-    );
+    if (onlineUserId) {
 
-    onlineChannel = null;
-  }
+      await supabaseClient
+        .from("online_users")
+        .delete()
+        .eq(
+          "id",
+          onlineUserId
+        );
 
-  $("#chat").classList.add("hidden");
-  $("#home").classList.remove("hidden");
-};
+      onlineUserId =
+        null;
+
+    }
+
+    if (realtimeChannel) {
+
+      supabaseClient
+        .removeChannel(
+          realtimeChannel
+        );
+
+      realtimeChannel =
+        null;
+
+    }
+
+    if (onlineChannel) {
+
+      supabaseClient
+        .removeChannel(
+          onlineChannel
+        );
+
+      onlineChannel =
+        null;
+
+    }
+
+    $("#chat")
+      .classList
+      .add("hidden");
+
+    $("#home")
+      .classList
+      .remove("hidden");
+
+  };
 
 /* =========================
    EMOJI
 ========================= */
 
-$("#emojiBtn").onclick = () => {
-  $("#emojiPanel").classList.toggle("hidden");
-};
+$("#emojiBtn").onclick =
+  () => {
 
-$("#emojiPanel").onclick = e => {
+    $("#emojiPanel")
+      .classList
+      .toggle("hidden");
 
-  const emoji =
-    e.target.textContent.trim();
+  };
 
-  if (emoji) {
+$("#emojiPanel").onclick =
+  e => {
 
-    const input =
-      $("#messageInput");
+    const emoji =
+      e.target.textContent.trim();
 
-    input.value += emoji;
-    input.focus();
-  }
-};
+    if (emoji) {
+
+      const input =
+        $("#messageInput");
+
+      input.value += emoji;
+
+      input.focus();
+
+    }
+
+  };
 
 /* =========================
    THEME
 ========================= */
 
-$("#themeBtn").onclick = () => {
-  document.body.classList.toggle("light");
-};
+$("#themeBtn").onclick =
+  () => {
+
+    document.body
+      .classList
+      .toggle("light");
+
+  };
 
 /* =========================
    START
 ========================= */
 
 if (username) {
+
   $("#nameInput").value =
     username;
+
 }
 
 renderRoom();
