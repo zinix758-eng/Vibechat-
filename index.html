@@ -2,7 +2,6 @@
 <html lang="en">
 
 <head>
-
 <meta charset="utf-8">
 
 <meta
@@ -28,14 +27,12 @@
 <header class="topbar">
 
   <div class="brand">
-
     <span class="logo">✦</span>
 
     <div>
       <b>VibeChat</b>
       <small>Connect • Chat • Vibe</small>
     </div>
-
   </div>
 
   <button
@@ -49,14 +46,9 @@
 </header>
 
 
-<!-- =========================
-     HOME
-========================= -->
+<!-- HOME -->
 
-<main
-  id="home"
-  class="screen"
->
+<main id="home" class="screen">
 
 <section class="hero">
 
@@ -101,78 +93,29 @@
 
   <div class="roomgrid">
 
-
-    <!-- ROOM 1 -->
-
-    <button
-      class="roomcard"
-      data-room="Chill Zone"
-    >
-
+    <button class="roomcard" data-room="Chill Zone">
       <span>🌙</span>
-
       <b>Chill Zone</b>
-
-      <small>
-        Talk • Chill • Make new friends
-      </small>
-
+      <small>Talk • Chill • Make new friends</small>
     </button>
 
-
-    <!-- ROOM 2 -->
-
-    <button
-      class="roomcard"
-      data-room="Music Lounge"
-    >
-
+    <button class="roomcard" data-room="Music Lounge">
       <span>🎵</span>
-
       <b>Music Lounge</b>
-
-      <small>
-        Music • Songs • Vibes
-      </small>
-
+      <small>Music • Songs • Vibes</small>
     </button>
 
-
-    <!-- ROOM 3 -->
-
-    <button
-      class="roomcard"
-      data-room="Gaming"
-    >
-
+    <button class="roomcard" data-room="Gaming">
       <span>🎮</span>
-
       <b>Gaming</b>
-
-      <small>
-        Gaming • Fun • Squad
-      </small>
-
+      <small>Gaming • Fun • Squad</small>
     </button>
 
-
-    <!-- ROOM 4 -->
-
-    <button
-      class="roomcard"
-      data-room="Random"
-    >
-
+    <button class="roomcard" data-room="Random">
       <span>💭</span>
-
       <b>Random</b>
-
-      <small>
-        Random talks • Anything goes
-      </small>
-
+      <small>Random talks • Anything goes</small>
     </button>
-
 
   </div>
 
@@ -181,24 +124,16 @@
 </main>
 
 
-<!-- =========================
-     CHAT
-========================= -->
+<!-- CHAT -->
 
-<main
-  id="chat"
-  class="chat-layout hidden"
->
+<main id="chat" class="chat-layout hidden">
 
 
 <!-- SIDEBAR -->
 
 <aside class="sidebar">
 
-  <button
-    id="backBtn"
-    class="back"
-  >
+  <button id="backBtn" class="back">
     ← Rooms
   </button>
 
@@ -206,38 +141,21 @@
 
   <div id="roomList">
 
-
-    <button
-      class="room active"
-      data-room="Chill Zone"
-    >
+    <button class="room active" data-room="Chill Zone">
       🌙 Chill Zone
     </button>
 
-
-    <button
-      class="room"
-      data-room="Music Lounge"
-    >
+    <button class="room" data-room="Music Lounge">
       🎵 Music Lounge
     </button>
 
-
-    <button
-      class="room"
-      data-room="Gaming"
-    >
+    <button class="room" data-room="Gaming">
       🎮 Gaming
     </button>
 
-
-    <button
-      class="room"
-      data-room="Random"
-    >
+    <button class="room" data-room="Random">
       💭 Random
     </button>
-
 
   </div>
 
@@ -248,20 +166,29 @@
 
 <section class="chat">
 
-
 <div class="chathead">
 
-  <div>
+  <div class="room-info">
 
     <b id="roomTitle">
       🌙 Chill Zone
     </b>
 
-    <!-- ROOM TOPIC -->
+    <div class="topic-row">
 
-    <small id="roomTopic">
-      Talk • Chill • Make new friends
-    </small>
+      <small id="roomTopic">
+        Talk • Chill • Make new friends
+      </small>
+
+      <button
+        id="editTopicBtn"
+        class="edit-topic"
+        title="Edit room topic"
+      >
+        ✏️
+      </button>
+
+    </div>
 
   </div>
 
@@ -270,10 +197,8 @@
     id="usersBtn"
     class="users"
   >
-
     👥
     <span id="onlineCount">0</span>
-
   </button>
 
 </div>
@@ -341,11 +266,61 @@
 
 </main>
 
+
+<!-- EDIT TOPIC POPUP -->
+
+<div
+  id="topicModal"
+  class="topic-modal hidden"
+>
+
+  <div class="topic-box">
+
+    <button
+      id="closeTopicBtn"
+      class="topic-close"
+    >
+      ✕
+    </button>
+
+    <h2>✏️ Edit Room Topic</h2>
+
+    <p id="topicRoomName">
+      Chill Zone
+    </p>
+
+    <input
+      id="topicInput"
+      maxlength="100"
+      placeholder="Write room topic..."
+    >
+
+    <div class="topic-actions">
+
+      <button
+        id="cancelTopicBtn"
+        class="topic-cancel"
+      >
+        Cancel
+      </button>
+
+      <button
+        id="saveTopicBtn"
+        class="topic-save"
+      >
+        Save Topic
+      </button>
+
+    </div>
+
+  </div>
+
 </div>
 
+
+</div>
 
 <script src="app.js"></script>
 
 </body>
-
 </html>
