@@ -66,7 +66,84 @@
 
 </div>
 
+<!-- V4 PROFILE MODAL -->
+<div id="profileModal" class="profile-modal hidden">
 
+  <div class="profile-box">
+
+    <button id="closeProfileBtn" class="profile-close">✕</button>
+
+    <div class="profile-avatar-wrap">
+
+      <img
+        id="profileAvatar"
+        class="profile-avatar"
+        src=""
+        alt="Profile"
+      >
+
+      <label
+        for="avatarInput"
+        class="avatar-upload"
+        title="Change profile picture"
+      >
+        📷
+      </label>
+
+      <input
+        id="avatarInput"
+        type="file"
+        accept="image/*"
+        class="hidden"
+      >
+
+    </div>
+
+    <h2>Edit Profile</h2>
+
+    <p class="profile-subtitle">
+      Customize your VibeChat profile
+    </p>
+
+    <label class="profile-label">
+      Username
+    </label>
+
+    <input
+      id="profileUsername"
+      class="profile-input"
+      type="text"
+      maxlength="20"
+      placeholder="Username"
+    >
+
+    <label class="profile-label">
+      Bio
+    </label>
+
+    <textarea
+      id="profileBio"
+      class="profile-input profile-textarea"
+      maxlength="120"
+      placeholder="Tell something about yourself..."
+    ></textarea>
+
+    <button
+      id="saveProfileBtn"
+      class="profile-save"
+    >
+      Save Profile
+    </button>
+
+    <p
+      id="profileMessage"
+      class="profile-message"
+    ></p>
+
+  </div>
+
+</div>
+  
 <div id="app">
 
 <header class="topbar">
