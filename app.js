@@ -13,8 +13,21 @@ const supabaseClient =
   );
 
 
+/* =========================
+   USER / AUTH
+========================= */
+
 let username =
   localStorage.getItem("vibechat_name") || "";
+
+let currentUser = null;
+
+let authMode = "login";
+
+
+/* =========================
+   CHAT STATE
+========================= */
 
 let currentRoom = "Chill Zone";
 
@@ -39,6 +52,7 @@ const roomIcons = {
   "Gaming":"🎮",
   "Random":"💭"
 };
+
 
 const defaultTopics = {
   "Chill Zone":"Talk • Chill • Make new friends",
@@ -72,7 +86,520 @@ function escapeHtml(value){
 }
 
 
-/* ROOM */
+/* =========================
+   AUTH UI
+========================= */
+
+function showAuth(mode = "login"){
+
+  authMode = mode;
+
+  $("#authModal")
+    .classList
+    .remove("hidden");
+
+  if(mode === "signup"){
+
+    $("#authTitle").textContent =
+      "Create Account";
+
+    $("#authSubtitle").textContent =
+      "Join VibeChat and start chatting";
+
+    $("#authUsername")
+      .classList
+      .remove("hidden");
+
+    $("#authSubmitBtn").textContent =
+      "Create Account";
+
+    $("#authSwitchBtn").textContent =
+      "Already have an account? Login";
+
+  }else{
+
+    $("#authTitle").textContent =
+      "Welcome Back";
+
+    $("#authSubtitle").textContent =
+      "Login to continue to VibeChat";
+
+    $("#authUsername")
+      .classList
+      .add("hidden");
+
+    $("#authSubmitBtn").textContent =
+      "Login";
+
+    $("#authSwitchBtn").textContent =
+      "Don't have an account? Sign up";
+
+  }
+
+  $("#authMessage").textContent = "";
+
+}
+
+
+function closeAuth(){
+
+  $("#authModal")
+    .classList
+    .add("hidden");
+
+}
+
+
+function authMessage(text, error = false){
+
+  const box =
+    $("#authMessage");
+
+  box.textContent = text;
+
+  box.style.color =
+    error ? "#ff6b81" : "";
+
+}
+
+
+/* =========================
+   SIGNUP
+========================= */
+
+async function signup(){
+
+  const email =
+    $("#authEmail")
+      .value
+      .trim();
+
+  const password =
+    $("#authPassword")
+      .value;
+
+  const newUsername =
+    $("#authUsername")
+      .value
+      .trim()
+      .slice(0,20);
+
+
+  if(!email || !password || !newUsername){
+
+    authMessage(
+      "Email, password aur username sab bharna zaroori hai.",
+      true
+    );
+
+    return;
+
+  }
+
+
+  if(newUsername.length < 3){
+
+    authMessage(
+      "Username kam se kam 3 characters ka hona chahiye.",
+      true
+    );
+
+    return;
+
+  }
+
+
+  authMessage(
+    "Account create ho raha hai..."
+  );
+
+
+  try{
+
+    const {
+      data,
+      error
+    } =
+      await supabaseClient.auth.signUp({
+        email:email,
+        password:password
+      });
+
+
+    if(error) throw error;
+
+
+    if(!data.user){
+
+      throw new Error(
+        "Account create nahi hua."
+      );
+
+    }
+
+
+    const {
+      error:profileError
+    } =
+      await supabaseClient
+        .from("profiles")
+        .insert({
+          id:data.user.id,
+          username:newUsername
+        });
+
+
+    if(profileError){
+
+      if(
+        profileError.code === "23505"
+      ){
+
+        authMessage(
+          "Ye username already taken hai. Dusra username choose karo.",
+          true
+        );
+
+      }else{
+
+        authMessage(
+          "Profile create error: " +
+          profileError.message,
+          true
+        );
+
+      }
+
+      return;
+
+    }
+
+
+    username =
+      newUsername;
+
+    currentUser =
+      data.user;
+
+
+    localStorage.setItem(
+      "vibechat_name",
+      username
+    );
+
+
+    authMessage(
+      "Account successfully created! 🎉"
+    );
+
+
+    setTimeout(
+      () => {
+
+        closeAuth();
+
+        $("#nameInput").value =
+          username;
+
+      },
+      700
+    );
+
+
+  }catch(error){
+
+    authMessage(
+      error.message ||
+      "Signup failed.",
+      true
+    );
+
+  }
+
+}
+
+
+/* =========================
+   LOGIN
+========================= */
+
+async function login(){
+
+  const email =
+    $("#authEmail")
+      .value
+      .trim();
+
+  const password =
+    $("#authPassword")
+      .value;
+
+
+  if(!email || !password){
+
+    authMessage(
+      "Email aur password enter karo.",
+      true
+    );
+
+    return;
+
+  }
+
+
+  authMessage(
+    "Login ho raha hai..."
+  );
+
+
+  try{
+
+    const {
+      data,
+      error
+    } =
+      await supabaseClient.auth.signInWithPassword({
+        email:email,
+        password:password
+      });
+
+
+    if(error) throw error;
+
+
+    currentUser =
+      data.user;
+
+
+    await loadProfile();
+
+
+    authMessage(
+      "Login successful! 🎉"
+    );
+
+
+    setTimeout(
+      () => {
+
+        closeAuth();
+
+        $("#nameInput").value =
+          username;
+
+      },
+      500
+    );
+
+
+  }catch(error){
+
+    authMessage(
+      error.message ||
+      "Login failed.",
+      true
+    );
+
+  }
+
+}
+
+
+/* =========================
+   LOAD PROFILE
+========================= */
+
+async function loadProfile(){
+
+  if(!currentUser){
+
+    return false;
+
+  }
+
+
+  try{
+
+    const {
+      data,
+      error
+    } =
+      await supabaseClient
+        .from("profiles")
+        .select("username,bio,avatar_url")
+        .eq("id",currentUser.id)
+        .maybeSingle();
+
+
+    if(error) throw error;
+
+
+    if(!data){
+
+      return false;
+
+    }
+
+
+    username =
+      data.username;
+
+
+    localStorage.setItem(
+      "vibechat_name",
+      username
+    );
+
+
+    $("#nameInput").value =
+      username;
+
+
+    return true;
+
+
+  }catch(error){
+
+    console.error(
+      "Profile:",
+      error
+    );
+
+    return false;
+
+  }
+
+}
+
+
+/* =========================
+   AUTH CHECK
+========================= */
+
+async function checkAuth(){
+
+  const {
+    data
+  } =
+    await supabaseClient.auth.getSession();
+
+
+  currentUser =
+    data?.session?.user || null;
+
+
+  if(currentUser){
+
+    const loaded =
+      await loadProfile();
+
+
+    if(!loaded){
+
+      username = "";
+
+      showAuth("login");
+
+    }
+
+  }else{
+
+    username = "";
+
+    localStorage.removeItem(
+      "vibechat_name"
+    );
+
+  }
+
+}
+
+
+async function logout(){
+
+  if(heartbeatTimer){
+
+    clearInterval(
+      heartbeatTimer
+    );
+
+    heartbeatTimer = null;
+
+  }
+
+
+  await removeOwnOnlineUser();
+
+
+  if(realtimeChannel){
+
+    await supabaseClient
+      .removeChannel(
+        realtimeChannel
+      );
+
+    realtimeChannel = null;
+
+  }
+
+
+  if(onlineChannel){
+
+    await supabaseClient
+      .removeChannel(
+        onlineChannel
+      );
+
+    onlineChannel = null;
+
+  }
+
+
+  if(typingChannel){
+
+    await supabaseClient
+      .removeChannel(
+        typingChannel
+      );
+
+    typingChannel = null;
+
+  }
+
+
+  closePrivateChat();
+
+
+  await supabaseClient.auth.signOut();
+
+
+  currentUser = null;
+  username = "";
+
+
+  localStorage.removeItem(
+    "vibechat_name"
+  );
+
+
+  $("#chat")
+    .classList
+    .add("hidden");
+
+  $("#home")
+    .classList
+    .remove("hidden");
+
+  $("#nameInput").value = "";
+
+  showAuth("login");
+
+}
+
+
+/* =========================
+   ROOM
+========================= */
 
 function renderRoom(){
 
@@ -80,6 +607,7 @@ function renderRoom(){
     (roomIcons[currentRoom] || "💬") +
     " " +
     currentRoom;
+
 
   document
     .querySelectorAll(".room")
@@ -95,7 +623,9 @@ function renderRoom(){
 }
 
 
-/* TOPIC */
+/* =========================
+   TOPIC
+========================= */
 
 async function loadRoomTopic(){
 
@@ -105,16 +635,22 @@ async function loadRoomTopic(){
   topic.textContent =
     defaultTopics[currentRoom] || "";
 
+
   try{
 
-    const {data,error} =
+    const {
+      data,
+      error
+    } =
       await supabaseClient
         .from("room_topics")
         .select("topic")
         .eq("room",currentRoom)
         .maybeSingle();
 
+
     if(error) throw error;
+
 
     if(data?.topic){
 
@@ -169,6 +705,7 @@ async function saveRoomTopic(){
       .trim()
       .slice(0,100);
 
+
   if(!topic){
 
     alert(
@@ -179,9 +716,12 @@ async function saveRoomTopic(){
 
   }
 
+
   try{
 
-    const {error} =
+    const {
+      error
+    } =
       await supabaseClient
         .from("room_topics")
         .upsert(
@@ -194,12 +734,16 @@ async function saveRoomTopic(){
           }
         );
 
+
     if(error) throw error;
+
 
     $("#roomTopic").textContent =
       topic;
 
+
     closeTopicEditor();
+
 
   }catch(error){
 
@@ -213,16 +757,27 @@ async function saveRoomTopic(){
 }
 
 
-/* ONLINE USERS */
+/* =========================
+   ONLINE USERS
+========================= */
 
 async function removeOwnOnlineUser(){
 
-  if(!onlineUserId) return;
+  if(!onlineUserId){
+
+    return;
+
+  }
+
 
   await supabaseClient
     .from("online_users")
     .delete()
-    .eq("id",onlineUserId);
+    .eq(
+      "id",
+      onlineUserId
+    );
+
 
   onlineUserId = null;
 
@@ -233,9 +788,13 @@ async function joinOnlineUsers(){
 
   await removeOwnOnlineUser();
 
+
   try{
 
-    const {data,error} =
+    const {
+      data,
+      error
+    } =
       await supabaseClient
         .from("online_users")
         .insert({
@@ -246,12 +805,16 @@ async function joinOnlineUsers(){
         .select("id")
         .single();
 
+
     if(error) throw error;
+
 
     onlineUserId =
       data.id;
 
+
     await loadOnlineUsers();
+
 
   }catch(error){
 
@@ -272,14 +835,24 @@ async function loadOnlineUsers(){
     const cutoff =
       Date.now() - 45000;
 
-    const {data,error} =
+
+    const {
+      data,
+      error
+    } =
       await supabaseClient
         .from("online_users")
         .select(
           "id,username,room,last_seen"
         )
-        .eq("room",currentRoom)
-        .gt("last_seen",cutoff)
+        .eq(
+          "room",
+          currentRoom
+        )
+        .gt(
+          "last_seen",
+          cutoff
+        )
         .order(
           "last_seen",
           {
@@ -287,26 +860,33 @@ async function loadOnlineUsers(){
           }
         );
 
+
     if(error) throw error;
+
 
     $("#onlineCount").textContent =
       data?.length || 0;
 
+
     const people =
       $("#people");
 
+
     people.innerHTML =
       "<h3>Online now</h3>";
+
 
     (data || []).forEach(user => {
 
       const div =
         document.createElement("div");
 
+
       div.className =
         user.id === onlineUserId
           ? "me"
           : "person";
+
 
       div.innerHTML = `
         <span>🟢</span>
@@ -320,6 +900,7 @@ async function loadOnlineUsers(){
         </small>
       `;
 
+
       if(user.id !== onlineUserId){
 
         div.style.cursor =
@@ -328,6 +909,7 @@ async function loadOnlineUsers(){
         div.title =
           "Open private chat";
 
+
         div.onclick =
           () => openPrivateChat(
             user.username
@@ -335,9 +917,11 @@ async function loadOnlineUsers(){
 
       }
 
+
       people.appendChild(div);
 
     });
+
 
   }catch(error){
 
@@ -351,7 +935,9 @@ async function loadOnlineUsers(){
 }
 
 
-/* HEARTBEAT */
+/* =========================
+   HEARTBEAT
+========================= */
 
 function startHeartbeat(){
 
@@ -363,11 +949,13 @@ function startHeartbeat(){
 
   }
 
+
   heartbeatTimer =
     setInterval(
       async () => {
 
         if(!onlineUserId) return;
+
 
         await supabaseClient
           .from("online_users")
@@ -381,6 +969,7 @@ function startHeartbeat(){
             onlineUserId
           );
 
+
         loadOnlineUsers();
 
       },
@@ -390,7 +979,9 @@ function startHeartbeat(){
 }
 
 
-/* ONLINE REALTIME */
+/* =========================
+   ONLINE REALTIME
+========================= */
 
 function setupOnlineRealtime(){
 
@@ -402,6 +993,7 @@ function setupOnlineRealtime(){
       );
 
   }
+
 
   onlineChannel =
     supabaseClient
@@ -427,39 +1019,59 @@ function setupOnlineRealtime(){
 }
 
 
-/* ENTER */
+/* =========================
+   ENTER CHAT
+========================= */
 
 async function enter(
   room = currentRoom
 ){
 
+  if(!currentUser){
+
+    showAuth("login");
+
+    return;
+
+  }
+
+
   const name =
-    (
-      $("#nameInput")
-        .value
-        .trim() ||
-      username ||
-      "Guest"
-    ).slice(0,20);
+    username;
 
-  username = name;
 
-  localStorage.setItem(
-    "vibechat_name",
-    username
-  );
+  if(!name){
 
-  currentRoom = room;
+    await loadProfile();
+
+  }
+
+
+  if(!username){
+
+    showAuth("login");
+
+    return;
+
+  }
+
+
+  currentRoom =
+    room;
+
 
   $("#home")
     .classList
     .add("hidden");
 
+
   $("#chat")
     .classList
     .remove("hidden");
 
+
   renderRoom();
+
 
   await loadRoomTopic();
 
@@ -478,16 +1090,20 @@ async function enter(
 }
 
 
-/* PUBLIC MESSAGES */
+/* =========================
+   PUBLIC MESSAGES
+========================= */
 
 async function renderMessages(){
 
   const box =
     $("#messages");
 
+
   box.innerHTML = "";
 
   displayedMessages.clear();
+
 
   samples.forEach(
     ([name,text]) => {
@@ -501,13 +1117,20 @@ async function renderMessages(){
     }
   );
 
+
   try{
 
-    const {data,error} =
+    const {
+      data,
+      error
+    } =
       await supabaseClient
         .from("messages")
         .select("*")
-        .eq("room",currentRoom)
+        .eq(
+          "room",
+          currentRoom
+        )
         .order(
           "created_at",
           {
@@ -515,7 +1138,9 @@ async function renderMessages(){
           }
         );
 
+
     if(error) throw error;
+
 
     (data || []).forEach(
       message => {
@@ -530,8 +1155,10 @@ async function renderMessages(){
       }
     );
 
+
     box.scrollTop =
       box.scrollHeight;
+
 
   }catch(error){
 
@@ -557,18 +1184,27 @@ function addMsg(
       ? `${message.room}|${message.name}|${message.text}|${message.created_at}`
       : `sample|${name}|${text}`;
 
-  if(displayedMessages.has(key)){
+
+  if(
+    displayedMessages.has(key)
+  ){
+
     return;
+
   }
 
+
   displayedMessages.add(key);
+
 
   const div =
     document.createElement("div");
 
+
   div.className =
     "msg" +
     (mine ? " mine" : "");
+
 
   div.innerHTML = `
     <div class="meta">
@@ -580,13 +1216,16 @@ function addMsg(
     </div>
   `;
 
+
   $("#messages")
     .appendChild(div);
 
 }
 
 
-/* PUBLIC SEND */
+/* =========================
+   PUBLIC SEND
+========================= */
 
 async function send(){
 
@@ -598,19 +1237,32 @@ async function send(){
 
   }
 
+
   const input =
     $("#messageInput");
+
 
   const text =
     input.value.trim();
 
-  if(!text || !username){
+
+  if(
+    !text ||
+    !username ||
+    !currentUser
+  ){
+
     return;
+
   }
+
 
   try{
 
-    const {data,error} =
+    const {
+      data,
+      error
+    } =
       await supabaseClient
         .from("messages")
         .insert({
@@ -621,7 +1273,9 @@ async function send(){
         })
         .select();
 
+
     if(error) throw error;
+
 
     if(data?.[0]){
 
@@ -634,7 +1288,9 @@ async function send(){
 
     }
 
+
     input.value = "";
+
 
   }catch(error){
 
@@ -648,7 +1304,9 @@ async function send(){
 }
 
 
-/* PUBLIC REALTIME */
+/* =========================
+   PUBLIC REALTIME
+========================= */
 
 function setupRealtime(){
 
@@ -660,6 +1318,7 @@ function setupRealtime(){
       );
 
   }
+
 
   realtimeChannel =
     supabaseClient
@@ -681,12 +1340,14 @@ function setupRealtime(){
           const message =
             payload.new;
 
+
           addMsg(
             message.name,
             message.text,
             message.name === username,
             message
           );
+
 
           $("#messages").scrollTop =
             $("#messages").scrollHeight;
@@ -698,7 +1359,9 @@ function setupRealtime(){
 }
 
 
-/* TYPING */
+/* =========================
+   TYPING
+========================= */
 
 function setupTyping(){
 
@@ -710,6 +1373,7 @@ function setupTyping(){
       );
 
   }
+
 
   typingChannel =
     supabaseClient
@@ -729,6 +1393,7 @@ function setupTyping(){
           const data =
             payload.payload;
 
+
           if(
             data &&
             data.username !== username &&
@@ -740,15 +1405,19 @@ function setupTyping(){
               data.username +
               " is typing...";
 
+
             clearTimeout(
               window.publicTypingTimer
             );
 
+
             window.publicTypingTimer =
               setTimeout(
                 () => {
+
                   $("#typingIndicator")
                     .textContent = "";
+
                 },
                 1800
               );
@@ -762,24 +1431,32 @@ function setupTyping(){
 }
 
 
-/* PRIVATE CHAT */
+/* =========================
+   PRIVATE CHAT
+========================= */
 
 async function openPrivateChat(
   user
 ){
 
-  privateUser = user;
+  privateUser =
+    user;
+
 
   $("#publicChat")
     .classList
     .add("hidden");
 
+
   $("#privateChat")
     .classList
     .remove("hidden");
 
+
   $("#privateUserName")
-    .textContent = user;
+    .textContent =
+    user;
+
 
   $("#messageInput")
     .placeholder =
@@ -787,9 +1464,11 @@ async function openPrivateChat(
     user +
     "...";
 
+
   $("#people")
     .classList
     .remove("show");
+
 
   await renderPrivateMessages();
 
@@ -803,13 +1482,18 @@ async function renderPrivateMessages(){
   const box =
     $("#privateMessages");
 
+
   box.innerHTML = "";
 
   displayedPrivateMessages.clear();
 
+
   try{
 
-    const {data,error} =
+    const {
+      data,
+      error
+    } =
       await supabaseClient
         .from("private_messages")
         .select("*")
@@ -823,7 +1507,9 @@ async function renderPrivateMessages(){
           }
         );
 
+
     if(error) throw error;
+
 
     (data || []).forEach(
       message => {
@@ -835,8 +1521,10 @@ async function renderPrivateMessages(){
       }
     );
 
+
     box.scrollTop =
       box.scrollHeight;
+
 
   }catch(error){
 
@@ -855,6 +1543,7 @@ function addPrivateMsg(message){
   const key =
     String(message.id);
 
+
   if(
     displayedPrivateMessages.has(key)
   ){
@@ -863,17 +1552,22 @@ function addPrivateMsg(message){
 
   }
 
+
   displayedPrivateMessages.add(key);
+
 
   const mine =
     message.sender === username;
 
+
   const div =
     document.createElement("div");
+
 
   div.className =
     "msg" +
     (mine ? " mine" : "");
+
 
   div.innerHTML = `
     <div class="meta">
@@ -885,432 +1579,11 @@ function addPrivateMsg(message){
     </div>
   `;
 
+
   $("#privateMessages")
     .appendChild(div);
 
 }
 
 
-async function sendPrivate(){
-
-  const input =
-    $("#messageInput");
-
-  const text =
-    input.value.trim();
-
-  if(
-    !text ||
-    !username ||
-    !privateUser
-  ){
-
-    return;
-
-  }
-
-  try{
-
-    const {data,error} =
-      await supabaseClient
-        .from("private_messages")
-        .insert({
-          sender:username,
-          receiver:privateUser,
-          text:text,
-          created_at:Date.now()
-        })
-        .select()
-        .single();
-
-    if(error) throw error;
-
-    addPrivateMsg(data);
-
-    input.value = "";
-
-    $("#privateMessages").scrollTop =
-      $("#privateMessages").scrollHeight;
-
-  }catch(error){
-
-    alert(
-      "Private message error: " +
-      error.message
-    );
-
-  }
-
-}
-
-
-function setupPrivateRealtime(){
-
-  if(privateChannel){
-
-    supabaseClient
-      .removeChannel(
-        privateChannel
-      );
-
-  }
-
-  privateChannel =
-    supabaseClient
-      .channel(
-        "private-" +
-        Date.now()
-      )
-      .on(
-        "postgres_changes",
-        {
-          event:"INSERT",
-          schema:"public",
-          table:"private_messages"
-        },
-        payload => {
-
-          const message =
-            payload.new;
-
-          const valid =
-            (
-              message.sender === privateUser &&
-              message.receiver === username
-            ) ||
-            (
-              message.sender === username &&
-              message.receiver === privateUser
-            );
-
-          if(!valid) return;
-
-          addPrivateMsg(message);
-
-          $("#privateMessages").scrollTop =
-            $("#privateMessages").scrollHeight;
-
-        }
-      )
-      .subscribe();
-
-}
-
-
-function closePrivateChat(){
-
-  privateUser = null;
-
-  $("#privateChat")
-    .classList
-    .add("hidden");
-
-  $("#publicChat")
-    .classList
-    .remove("hidden");
-
-  $("#messageInput")
-    .placeholder =
-    "Write a message…";
-
-  if(privateChannel){
-
-    supabaseClient
-      .removeChannel(
-        privateChannel
-      );
-
-    privateChannel = null;
-
-  }
-
-}
-
-
-/* USERS */
-
-$("#usersBtn").onclick =
-  () => {
-
-    $("#people")
-      .classList
-      .toggle("show");
-
-  };
-
-
-/* ROOMS */
-
-document
-  .querySelectorAll(".roomcard")
-  .forEach(button => {
-
-    button.onclick =
-      () => enter(
-        button.dataset.room
-      );
-
-  });
-
-
-document
-  .querySelectorAll(".room")
-  .forEach(button => {
-
-    button.onclick =
-      async () => {
-
-        const newRoom =
-          button.dataset.room;
-
-        if(
-          newRoom === currentRoom
-        ){
-
-          return;
-
-        }
-
-        closePrivateChat();
-
-        currentRoom =
-          newRoom;
-
-        renderRoom();
-
-        await joinOnlineUsers();
-
-        await loadRoomTopic();
-
-        await renderMessages();
-
-        setupRealtime();
-
-        setupTyping();
-
-      };
-
-  });
-
-
-/* JOIN */
-
-$("#joinBtn").onclick =
-  () => enter();
-
-$("#nameInput").addEventListener(
-  "keydown",
-  e => {
-
-    if(e.key === "Enter"){
-      enter();
-    }
-
-  }
-);
-
-
-/* SEND */
-
-$("#sendBtn").onclick =
-  send;
-
-$("#messageInput").addEventListener(
-  "keydown",
-  e => {
-
-    if(e.key === "Enter"){
-      send();
-    }
-
-  }
-);
-
-
-/* TYPING */
-
-$("#messageInput").addEventListener(
-  "input",
-  async () => {
-
-    if(!typingChannel || privateUser){
-      return;
-    }
-
-    await typingChannel.send({
-      type:"broadcast",
-      event:"typing",
-      payload:{
-        username:username,
-        room:currentRoom
-      }
-    });
-
-  }
-);
-
-
-/* PRIVATE BACK */
-
-$("#privateBackBtn").onclick =
-  closePrivateChat;
-
-
-/* EMOJI */
-
-$("#emojiBtn").onclick =
-  () => {
-
-    $("#emojiPanel")
-      .classList
-      .toggle("hidden");
-
-  };
-
-
-document
-  .querySelectorAll(
-    "#emojiPanel button"
-  )
-  .forEach(button => {
-
-    button.onclick =
-      () => {
-
-        $("#messageInput")
-          .value +=
-          button.textContent;
-
-        $("#messageInput")
-          .focus();
-
-      };
-
-  });
-
-
-/* TOPIC */
-
-$("#editTopicBtn").onclick =
-  openTopicEditor;
-
-$("#closeTopicBtn").onclick =
-  closeTopicEditor;
-
-$("#cancelTopicBtn").onclick =
-  closeTopicEditor;
-
-$("#saveTopicBtn").onclick =
-  saveRoomTopic;
-
-
-/* THEME */
-
-const savedTheme =
-  localStorage.getItem(
-    "vibechat_theme"
-  );
-
-if(savedTheme === "light"){
-
-  document.body
-    .classList
-    .add("light");
-
-  $("#themeBtn")
-    .textContent = "☀";
-
-}
-
-
-$("#themeBtn").onclick =
-  () => {
-
-    document.body
-      .classList
-      .toggle("light");
-
-    const light =
-      document.body
-        .classList
-        .contains("light");
-
-    localStorage.setItem(
-      "vibechat_theme",
-      light
-        ? "light"
-        : "dark"
-    );
-
-    $("#themeBtn")
-      .textContent =
-      light ? "☀" : "☾";
-
-  };
-
-
-/* BACK */
-
-$("#backBtn").onclick =
-  async () => {
-
-    if(heartbeatTimer){
-
-      clearInterval(
-        heartbeatTimer
-      );
-
-    }
-
-    await removeOwnOnlineUser();
-
-    if(realtimeChannel){
-
-      supabaseClient
-        .removeChannel(
-          realtimeChannel
-        );
-
-    }
-
-    if(onlineChannel){
-
-      supabaseClient
-        .removeChannel(
-          onlineChannel
-        );
-
-    }
-
-    if(typingChannel){
-
-      supabaseClient
-        .removeChannel(
-          typingChannel
-        );
-
-    }
-
-    closePrivateChat();
-
-    $("#chat")
-      .classList
-      .add("hidden");
-
-    $("#home")
-      .classList
-      .remove("hidden");
-
-  };
-
-
-/* START */
-
-if(username){
-
-  $("#nameInput").value =
-    username;
-
-}
-
-renderRoom();
+a
