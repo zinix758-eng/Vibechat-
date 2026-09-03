@@ -1184,31 +1184,34 @@ function addMsg(
       ? `${message.room}|${message.name}|${message.text}|${message.created_at}`
       : `sample|${name}|${text}`;
 
-
-  if(
-    displayedMessages.has(key)
-  ){
-
+  if(displayedMessages.has(key)){
     return;
-
   }
-
 
   displayedMessages.add(key);
 
-
   const div =
     document.createElement("div");
-
 
   div.className =
     "msg" +
     (mine ? " mine" : "");
 
+  const avatar =
+    message?.avatar_url ||
+    defaultAvatar(name);
 
   div.innerHTML = `
-    <div class="meta">
-      ${escapeHtml(name)}
+    <div class="msg-user">
+      <img
+        class="msg-avatar"
+        src="${escapeHtml(avatar)}"
+        alt=""
+      >
+
+      <div class="meta">
+        ${escapeHtml(name)}
+      </div>
     </div>
 
     <div class="bubble">
@@ -1216,10 +1219,8 @@ function addMsg(
     </div>
   `;
 
-
   $("#messages")
     .appendChild(div);
-
 }
 
 
