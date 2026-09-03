@@ -1044,3 +1044,22 @@ body.light .profile-close{
 body.light .avatar-upload{
   border-color:#fff;
     }
+
+.online-avatar{
+  width:38px;
+  height:38px;
+  border-radius:50%;
+  object-fit:cover;
+  flex-shrink:0;
+}
+
+.online-user-info{
+  display:flex;
+  flex-direction:column;
+  gap:2px;
+}
+
+.online-user-info small{
+  opacity:.6;
+  font-size:11px;
+}
