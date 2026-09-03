@@ -1,10 +1,5 @@
 const $ = s => document.querySelector(s);
 
-
-/* =========================
-   SUPABASE
-========================= */
-
 const SUPABASE_URL =
   "https://uopwsaymtomnxfmacsnu.supabase.co";
 
@@ -18,30 +13,25 @@ const supabaseClient =
   );
 
 
-/* =========================
-   STATE
-========================= */
-
 let username =
   localStorage.getItem("vibechat_name") || "";
 
 let currentRoom = "Chill Zone";
 
+let privateUser = null;
+
 let realtimeChannel = null;
 let onlineChannel = null;
 let typingChannel = null;
+let privateChannel = null;
 
 let onlineUserId = null;
-
 let heartbeatTimer = null;
 let typingTimer = null;
 
 let displayedMessages = new Set();
+let displayedPrivateMessages = new Set();
 
-
-/* =========================
-   ROOM DATA
-========================= */
 
 const roomIcons = {
   "Chill Zone":"🌙",
@@ -51,23 +41,12 @@ const roomIcons = {
 };
 
 const defaultTopics = {
-  "Chill Zone":
-    "Talk • Chill • Make new friends",
-
-  "Music Lounge":
-    "Music • Songs • Vibes",
-
-  "Gaming":
-    "Gaming • Fun • Squad",
-
-  "Random":
-    "Random talks • Anything goes"
+  "Chill Zone":"Talk • Chill • Make new friends",
+  "Music Lounge":"Music • Songs • Vibes",
+  "Gaming":"Gaming • Fun • Squad",
+  "Random":"Random talks • Anything goes"
 };
 
-
-/* =========================
-   SAMPLE MESSAGES
-========================= */
 
 const samples = [
   ["Nova","Welcome everyone! 👋"],
@@ -77,15 +56,10 @@ const samples = [
 ];
 
 
-/* =========================
-   HELPER
-========================= */
-
 function escapeHtml(value){
 
   return String(value).replace(
     /[&<>"']/g,
-
     c => ({
       "&":"&amp;",
       "<":"&lt;",
@@ -98,22 +72,14 @@ function escapeHtml(value){
 }
 
 
-/* =========================
-   ROOM RENDER
-========================= */
+/* ROOM */
 
 function renderRoom(){
 
-  const title = $("#roomTitle");
-
-  if(title){
-
-    title.textContent =
-      (roomIcons[currentRoom] || "💬") +
-      " " +
-      currentRoom;
-
-  }
+  $("#roomTitle").textContent =
+    (roomIcons[currentRoom] || "💬") +
+    " " +
+    currentRoom;
 
   document
     .querySelectorAll(".room")
@@ -129,15 +95,12 @@ function renderRoom(){
 }
 
 
-/* =========================
-   TOPIC
-========================= */
+/* TOPIC */
 
 async function loadRoomTopic(){
 
-  const topic = $("#roomTopic");
-
-  if(!topic) return;
+  const topic =
+    $("#roomTopic");
 
   topic.textContent =
     defaultTopics[currentRoom] || "";
@@ -153,7 +116,7 @@ async function loadRoomTopic(){
 
     if(error) throw error;
 
-    if(data && data.topic){
+    if(data?.topic){
 
       topic.textContent =
         data.topic;
@@ -163,7 +126,7 @@ async function loadRoomTopic(){
   }catch(error){
 
     console.log(
-      "Topic load:",
+      "Topic:",
       error.message
     );
 
@@ -172,55 +135,37 @@ async function loadRoomTopic(){
 }
 
 
-/* =========================
-   TOPIC EDITOR
-========================= */
-
 function openTopicEditor(){
 
-  const modal = $("#topicModal");
-  const input = $("#topicInput");
-  const roomName = $("#topicRoomName");
-
-  if(!modal || !input) return;
-
-  roomName.textContent =
+  $("#topicRoomName").textContent =
     currentRoom;
 
-  input.value =
-    $("#roomTopic").textContent ||
-    defaultTopics[currentRoom] ||
-    "";
+  $("#topicInput").value =
+    $("#roomTopic").textContent;
 
-  modal.classList.remove("hidden");
+  $("#topicModal")
+    .classList
+    .remove("hidden");
 
-  setTimeout(
-    () => input.focus(),
-    100
-  );
+  $("#topicInput").focus();
 
 }
 
 
 function closeTopicEditor(){
 
-  const modal = $("#topicModal");
-
-  if(modal){
-    modal.classList.add("hidden");
-  }
+  $("#topicModal")
+    .classList
+    .add("hidden");
 
 }
 
 
 async function saveRoomTopic(){
 
-  const input = $("#topicInput");
-
-  if(!input) return;
-
   const topic =
-    input.value
+    $("#topicInput")
+      .value
       .trim()
       .slice(0,100);
 
@@ -231,6 +176,7 @@ async function saveRoomTopic(){
     );
 
     return;
+
   }
 
   try{
@@ -257,11 +203,6 @@ async function saveRoomTopic(){
 
   }catch(error){
 
-    console.error(
-      "Save topic:",
-      error
-    );
-
     alert(
       "Topic save nahi hua: " +
       error.message
@@ -272,29 +213,16 @@ async function saveRoomTopic(){
 }
 
 
-/* =========================
-   ONLINE USERS
-========================= */
+/* ONLINE USERS */
 
 async function removeOwnOnlineUser(){
 
   if(!onlineUserId) return;
 
-  try{
-
-    await supabaseClient
-      .from("online_users")
-      .delete()
-      .eq("id",onlineUserId);
-
-  }catch(error){
-
-    console.log(
-      "Remove online:",
-      error.message
-    );
-
-  }
+  await supabaseClient
+    .from("online_users")
+    .delete()
+    .eq("id",onlineUserId);
 
   onlineUserId = null;
 
@@ -303,9 +231,9 @@ async function removeOwnOnlineUser(){
 
 async function joinOnlineUsers(){
 
-  try{
+  await removeOwnOnlineUser();
 
-    await removeOwnOnlineUser();
+  try{
 
     const {data,error} =
       await supabaseClient
@@ -328,7 +256,7 @@ async function joinOnlineUsers(){
   }catch(error){
 
     console.error(
-      "Join online:",
+      "Online:",
       error
     );
 
@@ -361,28 +289,16 @@ async function loadOnlineUsers(){
 
     if(error) throw error;
 
-    const users =
-      data || [];
-
-    const count =
-      $("#onlineCount");
-
-    if(count){
-
-      count.textContent =
-        users.length;
-
-    }
+    $("#onlineCount").textContent =
+      data?.length || 0;
 
     const people =
       $("#people");
 
-    if(!people) return;
-
     people.innerHTML =
       "<h3>Online now</h3>";
 
-    users.forEach(user => {
+    (data || []).forEach(user => {
 
       const div =
         document.createElement("div");
@@ -399,10 +315,25 @@ async function loadOnlineUsers(){
           ${
             user.id === onlineUserId
               ? "You"
-              : "Online"
+              : "Chat"
           }
         </small>
       `;
+
+      if(user.id !== onlineUserId){
+
+        div.style.cursor =
+          "pointer";
+
+        div.title =
+          "Open private chat";
+
+        div.onclick =
+          () => openPrivateChat(
+            user.username
+          );
+
+      }
 
       people.appendChild(div);
 
@@ -411,7 +342,7 @@ async function loadOnlineUsers(){
   }catch(error){
 
     console.error(
-      "Online users:",
+      "Users:",
       error
     );
 
@@ -420,46 +351,7 @@ async function loadOnlineUsers(){
 }
 
 
-/* =========================
-   HEARTBEAT
-========================= */
-
-async function updateHeartbeat(){
-
-  if(!onlineUserId) return;
-
-  try{
-
-    const {error} =
-      await supabaseClient
-        .from("online_users")
-        .update({
-          username:username,
-          room:currentRoom,
-          last_seen:Date.now()
-        })
-        .eq("id",onlineUserId);
-
-    if(error){
-
-      await joinOnlineUsers();
-
-      return;
-    }
-
-    await loadOnlineUsers();
-
-  }catch(error){
-
-    console.log(
-      "Heartbeat:",
-      error.message
-    );
-
-  }
-
-}
-
+/* HEARTBEAT */
 
 function startHeartbeat(){
 
@@ -473,16 +365,32 @@ function startHeartbeat(){
 
   heartbeatTimer =
     setInterval(
-      updateHeartbeat,
+      async () => {
+
+        if(!onlineUserId) return;
+
+        await supabaseClient
+          .from("online_users")
+          .update({
+            last_seen:Date.now(),
+            username:username,
+            room:currentRoom
+          })
+          .eq(
+            "id",
+            onlineUserId
+          );
+
+        loadOnlineUsers();
+
+      },
       15000
     );
 
 }
 
 
-/* =========================
-   ONLINE REALTIME
-========================= */
+/* ONLINE REALTIME */
 
 function setupOnlineRealtime(){
 
@@ -498,7 +406,7 @@ function setupOnlineRealtime(){
   onlineChannel =
     supabaseClient
       .channel(
-        "online-users-" +
+        "online-" +
         Date.now()
       )
       .on(
@@ -519,20 +427,17 @@ function setupOnlineRealtime(){
 }
 
 
-/* =========================
-   ENTER CHAT
-========================= */
+/* ENTER */
 
 async function enter(
   room = currentRoom
 ){
 
-  const input =
-    $("#nameInput");
-
   const name =
     (
-      input.value.trim() ||
+      $("#nameInput")
+        .value
+        .trim() ||
       username ||
       "Guest"
     ).slice(0,20);
@@ -568,21 +473,17 @@ async function enter(
 
   setupRealtime();
 
-  setupTypingRealtime();
+  setupTyping();
 
 }
 
 
-/* =========================
-   MESSAGES
-========================= */
+/* PUBLIC MESSAGES */
 
 async function renderMessages(){
 
   const box =
     $("#messages");
-
-  if(!box) return;
 
   box.innerHTML = "";
 
@@ -656,12 +557,8 @@ function addMsg(
       ? `${message.room}|${message.name}|${message.text}|${message.created_at}`
       : `sample|${name}|${text}`;
 
-  if(
-    displayedMessages.has(key)
-  ){
-
+  if(displayedMessages.has(key)){
     return;
-
   }
 
   displayedMessages.add(key);
@@ -689,11 +586,17 @@ function addMsg(
 }
 
 
-/* =========================
-   SEND
-========================= */
+/* PUBLIC SEND */
 
 async function send(){
+
+  if(privateUser){
+
+    await sendPrivate();
+
+    return;
+
+  }
 
   const input =
     $("#messageInput");
@@ -704,8 +607,6 @@ async function send(){
   if(!text || !username){
     return;
   }
-
-  stopTyping();
 
   try{
 
@@ -722,7 +623,7 @@ async function send(){
 
     if(error) throw error;
 
-    if(data && data[0]){
+    if(data?.[0]){
 
       addMsg(
         username,
@@ -735,15 +636,7 @@ async function send(){
 
     input.value = "";
 
-    $("#messages").scrollTop =
-      $("#messages").scrollHeight;
-
   }catch(error){
-
-    console.error(
-      "Send:",
-      error
-    );
 
     alert(
       "Message send error: " +
@@ -755,9 +648,7 @@ async function send(){
 }
 
 
-/* =========================
-   MESSAGE REALTIME
-========================= */
+/* PUBLIC REALTIME */
 
 function setupRealtime(){
 
@@ -774,8 +665,6 @@ function setupRealtime(){
     supabaseClient
       .channel(
         "messages-" +
-        currentRoom +
-        "-" +
         Date.now()
       )
       .on(
@@ -809,11 +698,9 @@ function setupRealtime(){
 }
 
 
-/* =========================
-   TYPING REALTIME
-========================= */
+/* TYPING */
 
-function setupTypingRealtime(){
+function setupTyping(){
 
   if(typingChannel){
 
@@ -842,27 +729,31 @@ function setupTypingRealtime(){
           const data =
             payload.payload;
 
-          if(!data) return;
-
           if(
-            data.username === username
+            data &&
+            data.username !== username &&
+            data.room === currentRoom
           ){
 
-            return;
+            $("#typingIndicator")
+              .textContent =
+              data.username +
+              " is typing...";
+
+            clearTimeout(
+              window.publicTypingTimer
+            );
+
+            window.publicTypingTimer =
+              setTimeout(
+                () => {
+                  $("#typingIndicator")
+                    .textContent = "";
+                },
+                1800
+              );
 
           }
-
-          if(
-            data.room !== currentRoom
-          ){
-
-            return;
-
-          }
-
-          showTyping(
-            data.username
-          );
 
         }
       )
@@ -871,61 +762,272 @@ function setupTypingRealtime(){
 }
 
 
-function showTyping(name){
+/* PRIVATE CHAT */
 
-  const indicator =
-    $("#typingIndicator");
+async function openPrivateChat(
+  user
+){
 
-  if(!indicator) return;
+  privateUser = user;
 
-  indicator.textContent =
-    name + " is typing...";
+  $("#publicChat")
+    .classList
+    .add("hidden");
 
-  clearTimeout(
-    showTyping.timer
-  );
+  $("#privateChat")
+    .classList
+    .remove("hidden");
 
-  showTyping.timer =
-    setTimeout(
-      () => {
-        indicator.textContent = "";
-      },
-      1800
+  $("#privateUserName")
+    .textContent = user;
+
+  $("#messageInput")
+    .placeholder =
+    "Message " +
+    user +
+    "...";
+
+  $("#people")
+    .classList
+    .remove("show");
+
+  await renderPrivateMessages();
+
+  setupPrivateRealtime();
+
+}
+
+
+async function renderPrivateMessages(){
+
+  const box =
+    $("#privateMessages");
+
+  box.innerHTML = "";
+
+  displayedPrivateMessages.clear();
+
+  try{
+
+    const {data,error} =
+      await supabaseClient
+        .from("private_messages")
+        .select("*")
+        .or(
+          `and(sender.eq.${username},receiver.eq.${privateUser}),and(sender.eq.${privateUser},receiver.eq.${username})`
+        )
+        .order(
+          "created_at",
+          {
+            ascending:true
+          }
+        );
+
+    if(error) throw error;
+
+    (data || []).forEach(
+      message => {
+
+        addPrivateMsg(
+          message
+        );
+
+      }
     );
 
-}
+    box.scrollTop =
+      box.scrollHeight;
 
+  }catch(error){
 
-async function sendTyping(){
+    console.error(
+      "Private messages:",
+      error
+    );
 
-  if(!typingChannel || !username){
-    return;
   }
 
-  await typingChannel.send({
-    type:"broadcast",
-    event:"typing",
-    payload:{
-      username:username,
-      room:currentRoom
-    }
-  });
+}
+
+
+function addPrivateMsg(message){
+
+  const key =
+    String(message.id);
+
+  if(
+    displayedPrivateMessages.has(key)
+  ){
+
+    return;
+
+  }
+
+  displayedPrivateMessages.add(key);
+
+  const mine =
+    message.sender === username;
+
+  const div =
+    document.createElement("div");
+
+  div.className =
+    "msg" +
+    (mine ? " mine" : "");
+
+  div.innerHTML = `
+    <div class="meta">
+      ${escapeHtml(message.sender)}
+    </div>
+
+    <div class="bubble">
+      ${escapeHtml(message.text)}
+    </div>
+  `;
+
+  $("#privateMessages")
+    .appendChild(div);
 
 }
 
 
-function stopTyping(){
+async function sendPrivate(){
 
-  clearTimeout(
-    typingTimer
-  );
+  const input =
+    $("#messageInput");
+
+  const text =
+    input.value.trim();
+
+  if(
+    !text ||
+    !username ||
+    !privateUser
+  ){
+
+    return;
+
+  }
+
+  try{
+
+    const {data,error} =
+      await supabaseClient
+        .from("private_messages")
+        .insert({
+          sender:username,
+          receiver:privateUser,
+          text:text,
+          created_at:Date.now()
+        })
+        .select()
+        .single();
+
+    if(error) throw error;
+
+    addPrivateMsg(data);
+
+    input.value = "";
+
+    $("#privateMessages").scrollTop =
+      $("#privateMessages").scrollHeight;
+
+  }catch(error){
+
+    alert(
+      "Private message error: " +
+      error.message
+    );
+
+  }
 
 }
 
 
-/* =========================
-   USERS BUTTON
-========================= */
+function setupPrivateRealtime(){
+
+  if(privateChannel){
+
+    supabaseClient
+      .removeChannel(
+        privateChannel
+      );
+
+  }
+
+  privateChannel =
+    supabaseClient
+      .channel(
+        "private-" +
+        Date.now()
+      )
+      .on(
+        "postgres_changes",
+        {
+          event:"INSERT",
+          schema:"public",
+          table:"private_messages"
+        },
+        payload => {
+
+          const message =
+            payload.new;
+
+          const valid =
+            (
+              message.sender === privateUser &&
+              message.receiver === username
+            ) ||
+            (
+              message.sender === username &&
+              message.receiver === privateUser
+            );
+
+          if(!valid) return;
+
+          addPrivateMsg(message);
+
+          $("#privateMessages").scrollTop =
+            $("#privateMessages").scrollHeight;
+
+        }
+      )
+      .subscribe();
+
+}
+
+
+function closePrivateChat(){
+
+  privateUser = null;
+
+  $("#privateChat")
+    .classList
+    .add("hidden");
+
+  $("#publicChat")
+    .classList
+    .remove("hidden");
+
+  $("#messageInput")
+    .placeholder =
+    "Write a message…";
+
+  if(privateChannel){
+
+    supabaseClient
+      .removeChannel(
+        privateChannel
+      );
+
+    privateChannel = null;
+
+  }
+
+}
+
+
+/* USERS */
 
 $("#usersBtn").onclick =
   () => {
@@ -937,55 +1039,19 @@ $("#usersBtn").onclick =
   };
 
 
-/* =========================
-   JOIN BUTTON
-========================= */
-
-$("#joinBtn").onclick =
-  () => {
-
-    enter();
-
-  };
-
-
-$("#nameInput").addEventListener(
-  "keydown",
-  e => {
-
-    if(e.key === "Enter"){
-
-      enter();
-
-    }
-
-  }
-);
-
-
-/* =========================
-   ROOM CARDS
-========================= */
+/* ROOMS */
 
 document
   .querySelectorAll(".roomcard")
   .forEach(button => {
 
     button.onclick =
-      () => {
-
-        enter(
-          button.dataset.room
-        );
-
-      };
+      () => enter(
+        button.dataset.room
+      );
 
   });
 
-
-/* =========================
-   ROOM SIDEBAR
-========================= */
 
 document
   .querySelectorAll(".room")
@@ -1005,6 +1071,8 @@ document
 
         }
 
+        closePrivateChat();
+
         currentRoom =
           newRoom;
 
@@ -1016,103 +1084,79 @@ document
 
         await renderMessages();
 
-        setupOnlineRealtime();
-
         setupRealtime();
 
-        setupTypingRealtime();
+        setupTyping();
 
       };
 
   });
 
 
-/* =========================
-   TOPIC BUTTONS
-========================= */
+/* JOIN */
 
-$("#editTopicBtn").onclick =
-  openTopicEditor;
+$("#joinBtn").onclick =
+  () => enter();
 
-$("#closeTopicBtn").onclick =
-  closeTopicEditor;
-
-$("#cancelTopicBtn").onclick =
-  closeTopicEditor;
-
-$("#saveTopicBtn").onclick =
-  saveRoomTopic;
-
-
-$("#topicInput").addEventListener(
+$("#nameInput").addEventListener(
   "keydown",
   e => {
 
     if(e.key === "Enter"){
-
-      saveRoomTopic();
-
-    }
-
-    if(e.key === "Escape"){
-
-      closeTopicEditor();
-
+      enter();
     }
 
   }
 );
 
 
-/* =========================
-   SEND BUTTON
-========================= */
+/* SEND */
 
 $("#sendBtn").onclick =
   send;
 
-
 $("#messageInput").addEventListener(
   "keydown",
   e => {
 
     if(e.key === "Enter"){
-
       send();
-
     }
 
   }
 );
 
 
-/* =========================
-   TYPING EVENT
-========================= */
+/* TYPING */
 
 $("#messageInput").addEventListener(
   "input",
-  () => {
+  async () => {
 
-    sendTyping();
+    if(!typingChannel || privateUser){
+      return;
+    }
 
-    clearTimeout(
-      typingTimer
-    );
-
-    typingTimer =
-      setTimeout(
-        stopTyping,
-        1200
-      );
+    await typingChannel.send({
+      type:"broadcast",
+      event:"typing",
+      payload:{
+        username:username,
+        room:currentRoom
+      }
+    });
 
   }
 );
 
 
-/* =========================
-   EMOJI
-========================= */
+/* PRIVATE BACK */
+
+$("#privateBackBtn").onclick =
+  closePrivateChat;
+
+
+/* EMOJI */
 
 $("#emojiBtn").onclick =
   () => {
@@ -1133,22 +1177,34 @@ document
     button.onclick =
       () => {
 
-        const input =
-          $("#messageInput");
-
-        input.value +=
+        $("#messageInput")
+          .value +=
           button.textContent;
 
-        input.focus();
+        $("#messageInput")
+          .focus();
 
       };
 
   });
 
 
-/* =========================
-   THEME
-========================= */
+/* TOPIC */
+
+$("#editTopicBtn").onclick =
+  openTopicEditor;
+
+$("#closeTopicBtn").onclick =
+  closeTopicEditor;
+
+$("#cancelTopicBtn").onclick =
+  closeTopicEditor;
+
+$("#saveTopicBtn").onclick =
+  saveRoomTopic;
+
+
+/* THEME */
 
 const savedTheme =
   localStorage.getItem(
@@ -1174,28 +1230,26 @@ $("#themeBtn").onclick =
       .classList
       .toggle("light");
 
-    const isLight =
+    const light =
       document.body
         .classList
         .contains("light");
 
     localStorage.setItem(
       "vibechat_theme",
-      isLight
+      light
         ? "light"
         : "dark"
     );
 
     $("#themeBtn")
       .textContent =
-      isLight ? "☀" : "☾";
+      light ? "☀" : "☾";
 
   };
 
 
-/* =========================
-   BACK
-========================= */
+/* BACK */
 
 $("#backBtn").onclick =
   async () => {
@@ -1205,8 +1259,6 @@ $("#backBtn").onclick =
       clearInterval(
         heartbeatTimer
       );
-
-      heartbeatTimer = null;
 
     }
 
@@ -1219,8 +1271,6 @@ $("#backBtn").onclick =
           realtimeChannel
         );
 
-      realtimeChannel = null;
-
     }
 
     if(onlineChannel){
@@ -1229,8 +1279,6 @@ $("#backBtn").onclick =
         .removeChannel(
           onlineChannel
         );
-
-      onlineChannel = null;
 
     }
 
@@ -1241,9 +1289,9 @@ $("#backBtn").onclick =
           typingChannel
         );
 
-      typingChannel = null;
-
     }
+
+    closePrivateChat();
 
     $("#chat")
       .classList
@@ -1256,9 +1304,7 @@ $("#backBtn").onclick =
   };
 
 
-/* =========================
-   START
-========================= */
+/* START */
 
 if(username){
 
