@@ -6,7 +6,6 @@
 <title>VibeChat</title>
 
 <link rel="stylesheet" href="style.css">
-
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 
@@ -145,16 +144,15 @@
     <b id="roomTitle">🌙 Chill Zone</b>
 
     <div class="topic-row">
+
       <small id="roomTopic">
         Talk • Chill • Make new friends
       </small>
 
-      <button
-        id="editTopicBtn"
-        class="edit-topic"
-      >
+      <button id="editTopicBtn" class="edit-topic">
         ✏️
       </button>
+
     </div>
 
   </div>
@@ -166,10 +164,42 @@
 </div>
 
 
-<div id="messages" class="messages"></div>
+<!-- PUBLIC CHAT -->
 
-<div id="typingIndicator" class="typing-indicator"></div>
+<div id="publicChat">
 
+  <div id="messages" class="messages"></div>
+
+  <div id="typingIndicator" class="typing-indicator"></div>
+
+</div>
+
+
+<!-- PRIVATE CHAT -->
+
+<div id="privateChat" class="private-chat hidden">
+
+  <div class="private-head">
+
+    <button id="privateBackBtn" class="private-back">
+      ←
+    </button>
+
+    <div>
+      <b id="privateUserName">User</b>
+      <small>Private chat</small>
+    </div>
+
+  </div>
+
+  <div id="privateMessages" class="messages"></div>
+
+  <div id="privateTyping" class="typing-indicator"></div>
+
+</div>
+
+
+<!-- COMPOSER -->
 
 <div class="composer">
 
@@ -189,6 +219,8 @@
 
 </div>
 
+
+<!-- EMOJIS -->
 
 <div id="emojiPanel" class="emoji-panel hidden">
 
@@ -215,6 +247,8 @@
 
 </section>
 
+
+<!-- ONLINE USERS -->
 
 <aside id="people" class="people">
   <h3>Online now</h3>
@@ -265,4 +299,4 @@
 <script src="app.js"></script>
 
 </body>
-</html>
+  </html>
