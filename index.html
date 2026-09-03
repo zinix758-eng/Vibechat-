@@ -1,23 +1,13 @@
 <!doctype html>
 <html lang="en">
-
 <head>
 <meta charset="utf-8">
-
-<meta
-  name="viewport"
-  content="width=device-width,initial-scale=1"
->
-
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <title>VibeChat</title>
 
-<link
-  rel="stylesheet"
-  href="style.css"
->
+<link rel="stylesheet" href="style.css">
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
 </head>
 
 <body>
@@ -25,24 +15,15 @@
 <div id="app">
 
 <header class="topbar">
-
   <div class="brand">
     <span class="logo">✦</span>
-
     <div>
       <b>VibeChat</b>
       <small>Connect • Chat • Vibe</small>
     </div>
   </div>
 
-  <button
-    id="themeBtn"
-    class="iconbtn"
-    title="Toggle theme"
-  >
-    ☾
-  </button>
-
+  <button id="themeBtn" class="iconbtn">☾</button>
 </header>
 
 
@@ -52,9 +33,7 @@
 
 <section class="hero">
 
-  <div class="badge">
-    ✨ Welcome to VibeChat
-  </div>
+  <div class="badge">✨ Welcome to VibeChat</div>
 
   <h1>
     Find your people.
@@ -67,7 +46,6 @@
   </p>
 
   <div class="joinbox">
-
     <input
       id="nameInput"
       maxlength="20"
@@ -77,7 +55,6 @@
     <button id="joinBtn">
       Enter Chat →
     </button>
-
   </div>
 
   <p class="hint">
@@ -128,9 +105,6 @@
 
 <main id="chat" class="chat-layout hidden">
 
-
-<!-- SIDEBAR -->
-
 <aside class="sidebar">
 
   <button id="backBtn" class="back">
@@ -162,20 +136,15 @@
 </aside>
 
 
-<!-- CHAT -->
-
 <section class="chat">
 
 <div class="chathead">
 
   <div class="room-info">
 
-    <b id="roomTitle">
-      🌙 Chill Zone
-    </b>
+    <b id="roomTitle">🌙 Chill Zone</b>
 
     <div class="topic-row">
-
       <small id="roomTopic">
         Talk • Chill • Make new friends
       </small>
@@ -183,43 +152,28 @@
       <button
         id="editTopicBtn"
         class="edit-topic"
-        title="Edit room topic"
       >
         ✏️
       </button>
-
     </div>
 
   </div>
 
-
-  <button
-    id="usersBtn"
-    class="users"
-  >
-    👥
-    <span id="onlineCount">0</span>
+  <button id="usersBtn" class="users">
+    👥 <span id="onlineCount">0</span>
   </button>
 
 </div>
 
 
-<!-- MESSAGES -->
+<div id="messages" class="messages"></div>
 
-<div
-  id="messages"
-  class="messages"
-></div>
+<div id="typingIndicator" class="typing-indicator"></div>
 
-
-<!-- MESSAGE BOX -->
 
 <div class="composer">
 
-  <button
-    id="emojiBtn"
-    class="iconbtn"
-  >
+  <button id="emojiBtn" class="iconbtn">
     ☺
   </button>
 
@@ -229,65 +183,59 @@
     placeholder="Write a message…"
   >
 
-  <button
-    id="sendBtn"
-    class="send"
-  >
+  <button id="sendBtn" class="send">
     ➤
   </button>
 
 </div>
 
 
-<!-- EMOJI -->
+<div id="emojiPanel" class="emoji-panel hidden">
 
-<div
-  id="emojiPanel"
-  class="emoji-panel hidden"
->
-😀 😃 😄 😁 😆 😅 😂 🙂 🙃 😉 😊 😎 😍 🥳 🔥 ❤️ ✨ 👍 👀 🎮 🎵
+  <button>😀</button>
+  <button>😃</button>
+  <button>😄</button>
+  <button>😁</button>
+  <button>😂</button>
+  <button>🙂</button>
+  <button>😉</button>
+  <button>😊</button>
+  <button>😎</button>
+  <button>😍</button>
+  <button>🥳</button>
+  <button>🔥</button>
+  <button>❤️</button>
+  <button>✨</button>
+  <button>👍</button>
+  <button>👀</button>
+  <button>🎮</button>
+  <button>🎵</button>
+
 </div>
-
 
 </section>
 
 
-<!-- ONLINE USERS -->
-
-<aside
-  id="people"
-  class="people"
->
-
+<aside id="people" class="people">
   <h3>Online now</h3>
-
 </aside>
-
 
 </main>
 
 
-<!-- EDIT TOPIC POPUP -->
+<!-- TOPIC MODAL -->
 
-<div
-  id="topicModal"
-  class="topic-modal hidden"
->
+<div id="topicModal" class="topic-modal hidden">
 
   <div class="topic-box">
 
-    <button
-      id="closeTopicBtn"
-      class="topic-close"
-    >
+    <button id="closeTopicBtn" class="topic-close">
       ✕
     </button>
 
     <h2>✏️ Edit Room Topic</h2>
 
-    <p id="topicRoomName">
-      Chill Zone
-    </p>
+    <p id="topicRoomName">Chill Zone</p>
 
     <input
       id="topicInput"
@@ -297,17 +245,11 @@
 
     <div class="topic-actions">
 
-      <button
-        id="cancelTopicBtn"
-        class="topic-cancel"
-      >
+      <button id="cancelTopicBtn" class="topic-cancel">
         Cancel
       </button>
 
-      <button
-        id="saveTopicBtn"
-        class="topic-save"
-      >
+      <button id="saveTopicBtn" class="topic-save">
         Save Topic
       </button>
 
