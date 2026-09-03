@@ -2214,3 +2214,308 @@ $("#backBtn").onclick =
   await checkAuth();
 
 })();
+
+// =========================
+// V4 PROFILE SYSTEM
+// =========================
+
+function defaultAvatar(name = "User"){
+  const letter =
+    (name || "U").charAt(0).toUpperCase();
+
+  return (
+    "https://ui-avatars.com/api/" +
+    "?name=" +
+    encodeURIComponent(letter) +
+    "&background=667eea&color=fff&size=200"
+  );
+}
+
+
+async function loadMyProfile(){
+
+  if(!currentUser) return;
+
+  const {
+    data,
+    error
+  } =
+    await supabaseClient
+      .from("profiles")
+      .select("username,bio,avatar_url")
+      .eq("id", currentUser.id)
+      .maybeSingle();
+
+  if(error){
+    console.error("Profile load:", error);
+    return;
+  }
+
+  if(!data) return;
+
+  $("#profileUsername").value =
+    data.username || "";
+
+  $("#profileBio").value =
+    data.bio || "";
+
+  $("#profileAvatar").src =
+    data.avatar_url ||
+    defaultAvatar(data.username);
+}
+
+
+function openProfile(){
+
+  if(!currentUser){
+    showAuth("login");
+    return;
+  }
+
+  loadMyProfile();
+
+  $("#profileModal")
+    .classList
+    .remove("hidden");
+}
+
+
+function closeProfile(){
+
+  $("#profileModal")
+    .classList
+    .add("hidden");
+
+  $("#profileMessage").textContent = "";
+}
+
+
+async function uploadAvatar(file){
+
+  if(!file || !currentUser){
+    return null;
+  }
+
+  if(!file.type.startsWith("image/")){
+    throw new Error(
+      "Sirf image file upload karo."
+    );
+  }
+
+  if(file.size > 5 * 1024 * 1024){
+    throw new Error(
+      "Image 5MB se chhoti honi chahiye."
+    );
+  }
+
+  const extension =
+    file.name.split(".").pop() || "jpg";
+
+  const filePath =
+    currentUser.id +
+    "/avatar." +
+    extension;
+
+  const {
+    error
+  } =
+    await supabaseClient
+      .storage
+      .from("avatars")
+      .upload(
+        filePath,
+        file,
+        {
+          upsert:true,
+          contentType:file.type
+        }
+      );
+
+  if(error) throw error;
+
+  const {
+    data
+  } =
+    supabaseClient
+      .storage
+      .from("avatars")
+      .getPublicUrl(filePath);
+
+  return data.publicUrl;
+}
+
+
+async function saveProfile(){
+
+  if(!currentUser){
+    showAuth("login");
+    return;
+  }
+
+  const newUsername =
+    $("#profileUsername")
+      .value
+      .trim()
+      .slice(0,20);
+
+  const bio =
+    $("#profileBio")
+      .value
+      .trim()
+      .slice(0,120);
+
+  if(newUsername.length < 3){
+
+    $("#profileMessage").textContent =
+      "Username kam se kam 3 characters ka hona chahiye.";
+
+    return;
+  }
+
+  $("#profileMessage").textContent =
+    "Profile save ho rahi hai...";
+
+  try{
+
+    let avatarUrl =
+      $("#profileAvatar").dataset.url || "";
+
+    const file =
+      $("#avatarInput").files[0];
+
+    if(file){
+
+      $("#profileMessage").textContent =
+        "PFP upload ho rahi hai...";
+
+      avatarUrl =
+        await uploadAvatar(file);
+
+      $("#profileAvatar").dataset.url =
+        avatarUrl;
+    }
+
+    const {
+      error
+    } =
+      await supabaseClient
+        .from("profiles")
+        .update({
+          username:newUsername,
+          bio:bio,
+          avatar_url:avatarUrl || null
+        })
+        .eq("id",currentUser.id);
+
+    if(error){
+
+      if(error.code === "23505"){
+
+        throw new Error(
+          "Ye username already taken hai."
+        );
+
+      }
+
+      throw error;
+    }
+
+    username =
+      newUsername;
+
+    localStorage.setItem(
+      "vibechat_name",
+      username
+    );
+
+    $("#nameInput").value =
+      username;
+
+    $("#profileMessage").textContent =
+      "Profile saved successfully! 🎉";
+
+    await loadOnlineUsers();
+
+    setTimeout(
+      closeProfile,
+      700
+    );
+
+  }catch(error){
+
+    console.error(
+      "Profile save:",
+      error
+    );
+
+    $("#profileMessage").textContent =
+      error.message ||
+      "Profile save nahi hui.";
+
+  }
+}
+
+
+$("#closeProfileBtn").onclick =
+  closeProfile;
+
+
+$("#saveProfileBtn").onclick =
+  saveProfile;
+
+
+$("#avatarInput").addEventListener(
+  "change",
+  event => {
+
+    const file =
+      event.target.files[0];
+
+    if(!file) return;
+
+    if(!file.type.startsWith("image/")){
+      $("#profileMessage").textContent =
+        "Sirf image select karo.";
+      return;
+    }
+
+    const reader =
+      new FileReader();
+
+    reader.onload =
+      () => {
+
+        $("#profileAvatar").src =
+          reader.result;
+
+      };
+
+    reader.readAsDataURL(file);
+
+  }
+);
+
+const profileBtn =
+  document.createElement("button");
+
+profileBtn.id =
+  "profileBtn";
+
+profileBtn.className =
+  "iconbtn";
+
+profileBtn.textContent =
+  "👤";
+
+profileBtn.title =
+  "My Profile";
+
+profileBtn.onclick =
+  openProfile;
+
+const topbarElement =
+  document.querySelector(".topbar");
+
+if(topbarElement){
+  topbarElement.prepend(profileBtn);
+}
