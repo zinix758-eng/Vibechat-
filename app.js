@@ -1586,4 +1586,631 @@ function addPrivateMsg(message){
 }
 
 
-a
+async function sendPrivate(){
+
+  const input =
+    $("#messageInput");
+
+
+  const text =
+    input.value.trim();
+
+
+  if(
+    !text ||
+    !username ||
+    !privateUser ||
+    !currentUser
+  ){
+
+    return;
+
+  }
+
+
+  try{
+
+    const {
+      data,
+      error
+    } =
+      await supabaseClient
+        .from("private_messages")
+        .insert({
+          sender:username,
+          receiver:privateUser,
+          text:text,
+          created_at:Date.now()
+        })
+        .select()
+        .single();
+
+
+    if(error) throw error;
+
+
+    addPrivateMsg(data);
+
+
+    input.value = "";
+
+
+    $("#privateMessages").scrollTop =
+      $("#privateMessages").scrollHeight;
+
+
+  }catch(error){
+
+    alert(
+      "Private message error: " +
+      error.message
+    );
+
+  }
+
+}
+
+
+function setupPrivateRealtime(){
+
+  if(privateChannel){
+
+    supabaseClient
+      .removeChannel(
+        privateChannel
+      );
+
+  }
+
+
+  privateChannel =
+    supabaseClient
+      .channel(
+        "private-" +
+        Date.now()
+      )
+      .on(
+        "postgres_changes",
+        {
+          event:"INSERT",
+          schema:"public",
+          table:"private_messages"
+        },
+        payload => {
+
+          const message =
+            payload.new;
+
+
+          const valid =
+            (
+              message.sender === privateUser &&
+              message.receiver === username
+            ) ||
+            (
+              message.sender === username &&
+              message.receiver === privateUser
+            );
+
+
+          if(!valid) return;
+
+
+          addPrivateMsg(message);
+
+
+          $("#privateMessages").scrollTop =
+            $("#privateMessages").scrollHeight;
+
+        }
+      )
+      .subscribe();
+
+}
+
+
+function closePrivateChat(){
+
+  privateUser = null;
+
+
+  $("#privateChat")
+    .classList
+    .add("hidden");
+
+
+  $("#publicChat")
+    .classList
+    .remove("hidden");
+
+
+  $("#messageInput")
+    .placeholder =
+    "Write a message…";
+
+
+  if(privateChannel){
+
+    supabaseClient
+      .removeChannel(
+        privateChannel
+      );
+
+
+    privateChannel = null;
+
+  }
+
+}
+
+
+/* =========================
+   USERS
+========================= */
+
+$("#usersBtn").onclick =
+  () => {
+
+    $("#people")
+      .classList
+      .toggle("show");
+
+  };
+
+
+/* =========================
+   ROOMS
+========================= */
+
+document
+  .querySelectorAll(".roomcard")
+  .forEach(button => {
+
+    button.onclick =
+      () => enter(
+        button.dataset.room
+      );
+
+  });
+
+
+document
+  .querySelectorAll(".room")
+  .forEach(button => {
+
+    button.onclick =
+      async () => {
+
+        if(!currentUser){
+
+          showAuth("login");
+
+          return;
+
+        }
+
+
+        const newRoom =
+          button.dataset.room;
+
+
+        if(
+          newRoom === currentRoom
+        ){
+
+          return;
+
+        }
+
+
+        closePrivateChat();
+
+
+        currentRoom =
+          newRoom;
+
+
+        renderRoom();
+
+
+        await joinOnlineUsers();
+
+        await loadRoomTopic();
+
+        await renderMessages();
+
+        setupRealtime();
+
+        setupTyping();
+
+      };
+
+  });
+
+
+/* =========================
+   JOIN
+========================= */
+
+$("#joinBtn").onclick =
+  () => {
+
+    if(currentUser){
+
+      enter();
+
+    }else{
+
+      showAuth("login");
+
+    }
+
+  };
+
+
+$("#nameInput").addEventListener(
+  "keydown",
+  e => {
+
+    if(e.key === "Enter"){
+
+      if(currentUser){
+
+        enter();
+
+      }else{
+
+        showAuth("login");
+
+      }
+
+    }
+
+  }
+);
+
+
+/* =========================
+   SEND
+========================= */
+
+$("#sendBtn").onclick =
+  send;
+
+
+$("#messageInput").addEventListener(
+  "keydown",
+  e => {
+
+    if(e.key === "Enter"){
+
+      send();
+
+    }
+
+  }
+);
+
+
+/* =========================
+   TYPING
+========================= */
+
+$("#messageInput").addEventListener(
+  "input",
+  async () => {
+
+    if(
+      !typingChannel ||
+      privateUser
+    ){
+
+      return;
+
+    }
+
+
+    await typingChannel.send({
+      type:"broadcast",
+      event:"typing",
+      payload:{
+        username:username,
+        room:currentRoom
+      }
+    });
+
+  }
+);
+
+
+/* =========================
+   PRIVATE BACK
+========================= */
+
+$("#privateBackBtn").onclick =
+  closePrivateChat;
+
+
+/* =========================
+   EMOJI
+========================= */
+
+$("#emojiBtn").onclick =
+  () => {
+
+    $("#emojiPanel")
+      .classList
+      .toggle("hidden");
+
+  };
+
+
+document
+  .querySelectorAll(
+    "#emojiPanel button"
+  )
+  .forEach(button => {
+
+    button.onclick =
+      () => {
+
+        $("#messageInput")
+          .value +=
+          button.textContent;
+
+
+        $("#messageInput")
+          .focus();
+
+      };
+
+  });
+
+
+/* =========================
+   TOPIC
+========================= */
+
+$("#editTopicBtn").onclick =
+  openTopicEditor;
+
+$("#closeTopicBtn").onclick =
+  closeTopicEditor;
+
+$("#cancelTopicBtn").onclick =
+  closeTopicEditor;
+
+$("#saveTopicBtn").onclick =
+  saveRoomTopic;
+
+
+/* =========================
+   AUTH BUTTONS
+========================= */
+
+$("#authSubmitBtn").onclick =
+  async () => {
+
+    if(authMode === "signup"){
+
+      await signup();
+
+    }else{
+
+      await login();
+
+    }
+
+  };
+
+
+$("#authSwitchBtn").onclick =
+  () => {
+
+    if(authMode === "login"){
+
+      showAuth("signup");
+
+    }else{
+
+      showAuth("login");
+
+    }
+
+  };
+
+
+$("#closeAuthBtn").onclick =
+  closeAuth;
+
+
+$("#authPassword").addEventListener(
+  "keydown",
+  e => {
+
+    if(e.key === "Enter"){
+
+      if(authMode === "signup"){
+
+        signup();
+
+      }else{
+
+        login();
+
+      }
+
+    }
+
+  }
+);
+
+
+/* =========================
+   LOGOUT BUTTON
+========================= */
+
+const topbar =
+  document.querySelector(".topbar");
+
+
+if(topbar){
+
+  const logoutBtn =
+    document.createElement("button");
+
+
+  logoutBtn.id =
+    "logoutBtn";
+
+  logoutBtn.className =
+    "iconbtn";
+
+  logoutBtn.textContent =
+    "↪";
+
+
+  logoutBtn.title =
+    "Logout";
+
+
+  topbar.appendChild(
+    logoutBtn
+  );
+
+
+  logoutBtn.onclick =
+    logout;
+
+}
+
+
+/* =========================
+   THEME
+========================= */
+
+const savedTheme =
+  localStorage.getItem(
+    "vibechat_theme"
+  );
+
+
+if(savedTheme === "light"){
+
+  document.body
+    .classList
+    .add("light");
+
+
+  $("#themeBtn")
+    .textContent = "☀";
+
+}
+
+
+$("#themeBtn").onclick =
+  () => {
+
+    document.body
+      .classList
+      .toggle("light");
+
+
+    const light =
+      document.body
+        .classList
+        .contains("light");
+
+
+    localStorage.setItem(
+      "vibechat_theme",
+      light
+        ? "light"
+        : "dark"
+    );
+
+
+    $("#themeBtn")
+      .textContent =
+      light ? "☀" : "☾";
+
+  };
+
+
+/* =========================
+   BACK
+========================= */
+
+$("#backBtn").onclick =
+  async () => {
+
+    if(heartbeatTimer){
+
+      clearInterval(
+        heartbeatTimer
+      );
+
+      heartbeatTimer = null;
+
+    }
+
+
+    await removeOwnOnlineUser();
+
+
+    if(realtimeChannel){
+
+      supabaseClient
+        .removeChannel(
+          realtimeChannel
+        );
+
+    }
+
+
+    if(onlineChannel){
+
+      supabaseClient
+        .removeChannel(
+          onlineChannel
+        );
+
+    }
+
+
+    if(typingChannel){
+
+      supabaseClient
+        .removeChannel(
+          typingChannel
+        );
+
+    }
+
+
+    closePrivateChat();
+
+
+    $("#chat")
+      .classList
+      .add("hidden");
+
+
+    $("#home")
+      .classList
+      .remove("hidden");
+
+  };
+
+
+/* =========================
+   START
+========================= */
+
+(async function(){
+
+  renderRoom();
+
+  await checkAuth();
+
+})();
