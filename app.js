@@ -836,6 +836,10 @@ async function loadOnlineUsers(){
       Date.now() - 45000;
 
 
+    /* =========================
+       LOAD ONLINE USERS
+    ========================= */
+
     const {
       data,
       error
@@ -864,6 +868,33 @@ async function loadOnlineUsers(){
     if(error) throw error;
 
 
+    /* =========================
+       LOAD PROFILE PFPs
+    ========================= */
+
+    const {
+      data: profileData
+    } =
+      await supabaseClient
+        .from("profiles")
+        .select(
+          "username,avatar_url"
+        );
+
+
+    const avatarMap = {};
+
+
+    (profileData || []).forEach(
+      profile => {
+
+        avatarMap[profile.username] =
+          profile.avatar_url || "";
+
+      }
+    );
+
+
     $("#onlineCount").textContent =
       data?.length || 0;
 
@@ -876,51 +907,74 @@ async function loadOnlineUsers(){
       "<h3>Online now</h3>";
 
 
-    (data || []).forEach(user => {
+    /* =========================
+       SHOW USERS
+    ========================= */
 
-      const div =
-        document.createElement("div");
+    (data || []).forEach(
+      user => {
 
-
-      div.className =
-        user.id === onlineUserId
-          ? "me"
-          : "person";
-
-
-      div.innerHTML = `
-        <span>🟢</span>
-        <b>${escapeHtml(user.username)}</b>
-        <small>
-          ${
-            user.id === onlineUserId
-              ? "You"
-              : "Chat"
-          }
-        </small>
-      `;
+        const div =
+          document.createElement("div");
 
 
-      if(user.id !== onlineUserId){
-
-        div.style.cursor =
-          "pointer";
-
-        div.title =
-          "Open private chat";
+        div.className =
+          user.id === onlineUserId
+            ? "me"
+            : "person";
 
 
-        div.onclick =
-          () => openPrivateChat(
-            user.username
-          );
+        const avatar =
+          avatarMap[user.username] ||
+          defaultAvatar(user.username);
+
+
+        div.innerHTML = `
+          <img
+            class="online-avatar"
+            src="${escapeHtml(avatar)}"
+            alt=""
+          >
+
+          <div class="online-user-info">
+
+            <b>
+              ${escapeHtml(user.username)}
+            </b>
+
+            <small>
+              ${
+                user.id === onlineUserId
+                  ? "You"
+                  : "Chat"
+              }
+            </small>
+
+          </div>
+        `;
+
+
+        if(user.id !== onlineUserId){
+
+          div.style.cursor =
+            "pointer";
+
+          div.title =
+            "Open private chat";
+
+
+          div.onclick =
+            () => openPrivateChat(
+              user.username
+            );
+
+        }
+
+
+        people.appendChild(div);
 
       }
-
-
-      people.appendChild(div);
-
-    });
+    );
 
 
   }catch(error){
@@ -932,7 +986,7 @@ async function loadOnlineUsers(){
 
   }
 
-}
+  }
 
 
 /* =========================
