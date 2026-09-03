@@ -1100,10 +1100,43 @@ async function renderMessages(){
     $("#messages");
 
 
+  /* =========================
+     LOAD PROFILE AVATARS
+  ========================= */
+
+  const {
+    data: profileData
+  } =
+    await supabaseClient
+      .from("profiles")
+      .select("username, avatar_url");
+
+
+  const avatarMap = {};
+
+
+  (profileData || []).forEach(
+    profile => {
+
+      avatarMap[profile.username] =
+        profile.avatar_url || "";
+
+    }
+  );
+
+
+  /* =========================
+     CLEAR OLD MESSAGES
+  ========================= */
+
   box.innerHTML = "";
 
   displayedMessages.clear();
 
+
+  /* =========================
+     SAMPLE MESSAGES
+  ========================= */
 
   samples.forEach(
     ([name,text]) => {
@@ -1117,6 +1150,10 @@ async function renderMessages(){
     }
   );
 
+
+  /* =========================
+     LOAD DATABASE MESSAGES
+  ========================= */
 
   try{
 
@@ -1149,7 +1186,11 @@ async function renderMessages(){
           message.name,
           message.text,
           message.name === username,
-          message
+          {
+            ...message,
+            avatar_url:
+              avatarMap[message.name] || ""
+          }
         );
 
       }
@@ -1170,7 +1211,6 @@ async function renderMessages(){
   }
 
 }
-
 
 function addMsg(
   name,
