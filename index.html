@@ -11,18 +11,81 @@
 
 <body>
 
+<!-- V4 AUTH MODAL -->
+<div id="authModal" class="auth-modal hidden">
+
+  <div class="auth-box">
+
+    <button id="closeAuthBtn" class="auth-close">
+      ✕
+    </button>
+
+    <div class="auth-logo">✦</div>
+
+    <h2 id="authTitle">
+      Welcome Back
+    </h2>
+
+    <p id="authSubtitle">
+      Login to continue to VibeChat
+    </p>
+
+    <input
+      id="authEmail"
+      type="email"
+      placeholder="Email address"
+      autocomplete="email"
+    >
+
+    <input
+      id="authPassword"
+      type="password"
+      placeholder="Password"
+      autocomplete="current-password"
+    >
+
+    <input
+      id="authUsername"
+      type="text"
+      maxlength="20"
+      placeholder="Username"
+      class="hidden"
+    >
+
+    <button id="authSubmitBtn" class="auth-submit">
+      Login
+    </button>
+
+    <button id="authSwitchBtn" class="auth-switch">
+      Don't have an account? Sign up
+    </button>
+
+    <p id="authMessage" class="auth-message"></p>
+
+  </div>
+
+</div>
+
+
 <div id="app">
 
 <header class="topbar">
+
   <div class="brand">
+
     <span class="logo">✦</span>
+
     <div>
       <b>VibeChat</b>
       <small>Connect • Chat • Vibe</small>
     </div>
+
   </div>
 
-  <button id="themeBtn" class="iconbtn">☾</button>
+  <button id="themeBtn" class="iconbtn">
+    ☾
+  </button>
+
 </header>
 
 
@@ -32,7 +95,9 @@
 
 <section class="hero">
 
-  <div class="badge">✨ Welcome to VibeChat</div>
+  <div class="badge">
+    ✨ Welcome to VibeChat
+  </div>
 
   <h1>
     Find your people.
@@ -45,6 +110,7 @@
   </p>
 
   <div class="joinbox">
+
     <input
       id="nameInput"
       maxlength="20"
@@ -54,10 +120,11 @@
     <button id="joinBtn">
       Enter Chat →
     </button>
+
   </div>
 
   <p class="hint">
-    No account needed in this demo.
+    Login or create an account to continue.
   </p>
 
 </section>
@@ -141,7 +208,9 @@
 
   <div class="room-info">
 
-    <b id="roomTitle">🌙 Chill Zone</b>
+    <b id="roomTitle">
+      🌙 Chill Zone
+    </b>
 
     <div class="topic-row">
 
@@ -186,8 +255,13 @@
     </button>
 
     <div>
-      <b id="privateUserName">User</b>
-      <small>Private chat</small>
+      <b id="privateUserName">
+        User
+      </b>
+
+      <small>
+        Private chat
+      </small>
     </div>
 
   </div>
@@ -251,7 +325,11 @@
 <!-- ONLINE USERS -->
 
 <aside id="people" class="people">
-  <h3>Online now</h3>
+
+  <h3>
+    Online now
+  </h3>
+
 </aside>
 
 </main>
@@ -267,9 +345,13 @@
       ✕
     </button>
 
-    <h2>✏️ Edit Room Topic</h2>
+    <h2>
+      ✏️ Edit Room Topic
+    </h2>
 
-    <p id="topicRoomName">Chill Zone</p>
+    <p id="topicRoomName">
+      Chill Zone
+    </p>
 
     <input
       id="topicInput"
@@ -299,4 +381,4 @@
 <script src="app.js"></script>
 
 </body>
-  </html>
+</html>
