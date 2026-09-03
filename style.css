@@ -1082,3 +1082,24 @@ body.light .avatar-upload{
   flex-direction:column;
   gap:2px;
 }
+
+/* MESSAGE PFP SIZE FIX */
+
+.msg-user{
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+
+.msg-avatar{
+  width:30px !important;
+  height:30px !important;
+  min-width:30px !important;
+  max-width:30px !important;
+  min-height:30px !important;
+  max-height:30px !important;
+  border-radius:50% !important;
+  object-fit:cover !important;
+  display:block !important;
+  flex:none !important;
+}
