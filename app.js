@@ -786,8 +786,29 @@ async function removeOwnOnlineUser(){
 
 async function joinOnlineUsers(){
 
-  await removeOwnOnlineUser();
+  /* =========================
+     REMOVE OLD USER ROWS
+  ========================= */
 
+  if(username){
+
+    await supabaseClient
+      .from("online_users")
+      .delete()
+      .eq(
+        "username",
+        username
+      );
+
+  }
+
+
+  onlineUserId = null;
+
+
+  /* =========================
+     ADD CURRENT USER
+  ========================= */
 
   try{
 
