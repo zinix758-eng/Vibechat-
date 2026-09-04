@@ -1385,28 +1385,58 @@ async function send(){
           text:text,
           created_at:Date.now()
         })
-        .select();
+        .select()
+        .single();
 
 
     if(error) throw error;
 
 
-    if(data?.[0]){
+    /* =========================
+       GET MY PFP
+    ========================= */
 
-      addMsg(
-        username,
-        text,
-        true,
-        data[0]
-      );
+    const {
+      data:profile
+    } =
+      await supabaseClient
+        .from("profiles")
+        .select("avatar_url")
+        .eq(
+          "id",
+          currentUser.id
+        )
+        .maybeSingle();
 
-    }
+
+    const messageWithAvatar = {
+      ...data,
+      avatar_url:
+        profile?.avatar_url || ""
+    };
+
+
+    addMsg(
+      username,
+      text,
+      true,
+      messageWithAvatar
+    );
 
 
     input.value = "";
 
 
+    $("#messages").scrollTop =
+      $("#messages").scrollHeight;
+
+
   }catch(error){
+
+    console.error(
+      "Message send error:",
+      error
+    );
 
     alert(
       "Message send error: " +
