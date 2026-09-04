@@ -1297,20 +1297,18 @@ function addMsg(
 
   div.innerHTML = `
     <div class="msg-user">
-      <img
-        class="msg-avatar"
-        src="${escapeHtml(avatar)}"
-        alt=""
-      >
 
-      <div class="meta">
-        ${escapeHtml(name)}
-      </div>
-    </div>
+  <img
+    class="msg-avatar"
+    src="${escapeHtml(avatar)}"
+    alt=""
+  >
 
-    <div class="bubble">
-      ${escapeHtml(text)}
-    </div>
+  <div class="meta">
+    ${escapeHtml(name)}
+  </div>
+
+</div>
   `;
 
   $("#messages")
