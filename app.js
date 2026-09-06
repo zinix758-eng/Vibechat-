@@ -1344,29 +1344,16 @@ function addMsg(
 async function send(){
 
   if(privateUser){
-
     await sendPrivate();
-
     return;
-
   }
 
+  const input = $("#messageInput");
+  const text = input.value.trim();
 
-  const input =
-    $("#messageInput");
-
-
-  const text =
-    input.value.trim();
-
-
-  if(
-  !text ||
-  !username
-){
-  return;
-}
-
+  if(!text || !username){
+    return;
+  }
 
   try{
 
@@ -1377,17 +1364,54 @@ async function send(){
       await supabaseClient
         .from("messages")
         .insert({
-          room:currentRoom,
-          name:username,
-          text:text,
-          created_at:Date.now()
+          room: currentRoom,
+          name: username,
+          text: text,
+          created_at: Date.now()
         })
         .select()
         .single();
 
-
     if(error) throw error;
 
+    const {
+      data: profile
+    } =
+      await supabaseClient
+        .from("profiles")
+        .select("avatar_url")
+        .eq("username", username)
+        .maybeSingle();
+
+    const messageWithAvatar = {
+      ...data,
+      avatar_url: profile?.avatar_url || ""
+    };
+
+    addMsg(
+      username,
+      text,
+      true,
+      messageWithAvatar
+    );
+
+    input.value = "";
+
+    $("#messages").scrollTop =
+      $("#messages").scrollHeight;
+
+  }catch(error){
+
+    console.error("Message send error:", error);
+
+    alert(
+      "Message send error: " +
+      error.message
+    );
+
+  }
+
+}
 
     /* =========================
        GET MY PFP
