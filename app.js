@@ -1361,14 +1361,11 @@ async function send(){
 
 
   if(
-    !text ||
-    !username ||
-    !currentUser
-  ){
-
-    return;
-
-  }
+  !text ||
+  !username
+){
+  return;
+}
 
 
   try{
@@ -1397,17 +1394,16 @@ async function send(){
     ========================= */
 
     const {
-      data:profile
-    } =
-      await supabaseClient
-        .from("profiles")
-        .select("avatar_url")
-        .eq(
-          "id",
-          currentUser.id
-        )
-        .maybeSingle();
-
+  data:profile
+} =
+  await supabaseClient
+    .from("profiles")
+    .select("avatar_url")
+    .eq(
+      "username",
+      username
+    )
+    .maybeSingle();
 
     const messageWithAvatar = {
       ...data,
