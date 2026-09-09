@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>VibeChat</title>
+<title>ZUNO — Find your people</title>
 
 <link rel="stylesheet" href="style.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -11,46 +11,31 @@
 
 <body>
 
-<!-- V4 AUTH MODAL -->
+<!-- AUTH -->
 <div id="authModal" class="auth-modal hidden">
-
   <div class="auth-box">
+    <button id="closeAuthBtn" class="auth-close">✕</button>
 
-    <button id="closeAuthBtn" class="auth-close">
-      ✕
-    </button>
+    <div class="auth-logo">Z</div>
 
-    <div class="auth-logo">✦</div>
+    <h2 id="authTitle">Welcome Back</h2>
+    <p id="authSubtitle">Login to continue to ZUNO</p>
 
-    <h2 id="authTitle">
-      Welcome Back
-    </h2>
-
-    <p id="authSubtitle">
-      Login to continue to VibeChat
-    </p>
-
-    <input
-      id="authEmail"
+    <input id="authEmail"
       type="email"
       placeholder="Email address"
-      autocomplete="email"
-    >
+      autocomplete="email">
 
-    <input
-      id="authPassword"
+    <input id="authPassword"
       type="password"
       placeholder="Password"
-      autocomplete="current-password"
-    >
+      autocomplete="current-password">
 
-    <input
-      id="authUsername"
+    <input id="authUsername"
       type="text"
       maxlength="20"
       placeholder="Username"
-      class="hidden"
-    >
+      class="hidden">
 
     <button id="authSubmitBtn" class="auth-submit">
       Login
@@ -61,180 +46,223 @@
     </button>
 
     <p id="authMessage" class="auth-message"></p>
-
   </div>
-
 </div>
 
-<!-- V4 PROFILE MODAL -->
-<div id="profileModal" class="profile-modal hidden">
 
+<!-- PROFILE -->
+<div id="profileModal" class="profile-modal hidden">
   <div class="profile-box">
 
     <button id="closeProfileBtn" class="profile-close">✕</button>
 
     <div class="profile-avatar-wrap">
+      <img id="profileAvatar"
+           class="profile-avatar"
+           src=""
+           alt="Profile">
 
-      <img
-        id="profileAvatar"
-        class="profile-avatar"
-        src=""
-        alt="Profile"
-      >
-
-      <label
-        for="avatarInput"
-        class="avatar-upload"
-        title="Change profile picture"
-      >
+      <label for="avatarInput"
+             class="avatar-upload">
         📷
       </label>
 
-      <input
-        id="avatarInput"
-        type="file"
-        accept="image/*"
-        class="hidden"
-      >
-
+      <input id="avatarInput"
+             type="file"
+             accept="image/*"
+             class="hidden">
     </div>
 
     <h2>Edit Profile</h2>
-
     <p class="profile-subtitle">
-      Customize your VibeChat profile
+      Make your ZUNO profile yours
     </p>
 
     <label class="profile-label">
       Username
     </label>
 
-    <input
-      id="profileUsername"
-      class="profile-input"
-      type="text"
-      maxlength="20"
-      placeholder="Username"
-    >
+    <input id="profileUsername"
+           class="profile-input"
+           maxlength="20"
+           placeholder="Username">
 
     <label class="profile-label">
       Bio
     </label>
 
-    <textarea
-      id="profileBio"
-      class="profile-input profile-textarea"
-      maxlength="120"
-      placeholder="Tell something about yourself..."
-    ></textarea>
+    <textarea id="profileBio"
+              class="profile-input profile-textarea"
+              maxlength="120"
+              placeholder="Tell something about yourself..."></textarea>
 
-    <button
-      id="saveProfileBtn"
-      class="profile-save"
-    >
+    <button id="saveProfileBtn"
+            class="profile-save">
       Save Profile
     </button>
 
-    <p
-      id="profileMessage"
-      class="profile-message"
-    ></p>
-
+    <p id="profileMessage"
+       class="profile-message"></p>
   </div>
-
 </div>
-  
+
+
+<!-- APP -->
 <div id="app">
 
 <header class="topbar">
 
   <div class="brand">
 
-    <span class="logo">✦</span>
+    <div class="logo">
+      Z
+    </div>
 
     <div>
-      <b>VibeChat</b>
-      <small>Connect • Chat • Vibe</small>
+      <b>ZUNO</b>
+      <small>Find your people. Create your vibe.</small>
     </div>
 
   </div>
 
-  <button id="themeBtn" class="iconbtn">
-    ☾
-  </button>
+  <div class="top-actions">
+    <button id="themeBtn"
+            class="iconbtn">
+      ☾
+    </button>
+
+    <button id="profileBtn"
+            class="profile-top-btn hidden">
+      👤
+    </button>
+
+    <button id="logoutBtn"
+            class="iconbtn hidden"
+            title="Logout">
+      ↪
+    </button>
+  </div>
 
 </header>
 
 
 <!-- HOME -->
-
 <main id="home" class="screen">
 
 <section class="hero">
 
   <div class="badge">
-    ✨ Welcome to VibeChat
+    ✨ Welcome to ZUNO
   </div>
 
   <h1>
-    Find your people.
-    <br>
-    <span>Start a vibe.</span>
+    Find your people.<br>
+    <span>Create your vibe.</span>
   </h1>
 
   <p>
-    A simple, modern chat space for communities and friends.
+    Communities, conversations and people
+    who match your vibe.
   </p>
 
   <div class="joinbox">
 
-    <input
-      id="nameInput"
-      maxlength="20"
-      placeholder="Enter your username"
-    >
+    <input id="nameInput"
+           maxlength="20"
+           placeholder="Enter your username">
 
     <button id="joinBtn">
-      Enter Chat →
+      Enter ZUNO →
     </button>
 
   </div>
 
   <p class="hint">
-    Login or create an account to continue.
+    Login or create an account to enter ZUNO.
   </p>
 
 </section>
 
 
+<!-- FEATURES -->
+<section class="feature-row">
+
+  <div class="feature">
+    <span>💬</span>
+    <b>Chat</b>
+    <small>Real-time conversations</small>
+  </div>
+
+  <div class="feature">
+    <span>🌎</span>
+    <b>Communities</b>
+    <small>Find your people</small>
+  </div>
+
+  <div class="feature">
+    <span>⭐</span>
+    <b>XP & Levels</b>
+    <small>Build your reputation</small>
+  </div>
+
+  <div class="feature">
+    <span>🤖</span>
+    <b>AI</b>
+    <small>Smart community tools</small>
+  </div>
+
+</section>
+
+
+<!-- ROOMS -->
 <section class="rooms-preview">
 
-  <h2>Popular Rooms</h2>
+  <div class="section-head">
+    <div>
+      <h2>Explore Communities</h2>
+      <p>Jump into a conversation.</p>
+    </div>
+  </div>
 
   <div class="roomgrid">
 
-    <button class="roomcard" data-room="Chill Zone">
+    <button class="roomcard"
+            data-room="Chill Zone">
+
       <span>🌙</span>
       <b>Chill Zone</b>
       <small>Talk • Chill • Make new friends</small>
+
     </button>
 
-    <button class="roomcard" data-room="Music Lounge">
+
+    <button class="roomcard"
+            data-room="Music Lounge">
+
       <span>🎵</span>
       <b>Music Lounge</b>
       <small>Music • Songs • Vibes</small>
+
     </button>
 
-    <button class="roomcard" data-room="Gaming">
+
+    <button class="roomcard"
+            data-room="Gaming">
+
       <span>🎮</span>
       <b>Gaming</b>
       <small>Gaming • Fun • Squad</small>
+
     </button>
 
-    <button class="roomcard" data-room="Random">
+
+    <button class="roomcard"
+            data-room="Random">
+
       <span>💭</span>
       <b>Random</b>
       <small>Random talks • Anything goes</small>
+
     </button>
 
   </div>
@@ -245,34 +273,54 @@
 
 
 <!-- CHAT -->
-
-<main id="chat" class="chat-layout hidden">
+<main id="chat"
+      class="chat-layout hidden">
 
 <aside class="sidebar">
 
-  <button id="backBtn" class="back">
-    ← Rooms
+  <button id="backBtn"
+          class="back">
+    ← Communities
   </button>
 
-  <h3>Rooms</h3>
+  <h3>Communities</h3>
 
   <div id="roomList">
 
-    <button class="room active" data-room="Chill Zone">
+    <button class="room active"
+            data-room="Chill Zone">
       🌙 Chill Zone
     </button>
 
-    <button class="room" data-room="Music Lounge">
+    <button class="room"
+            data-room="Music Lounge">
       🎵 Music Lounge
     </button>
 
-    <button class="room" data-room="Gaming">
+    <button class="room"
+            data-room="Gaming">
       🎮 Gaming
     </button>
 
-    <button class="room" data-room="Random">
+    <button class="room"
+            data-room="Random">
       💭 Random
     </button>
+
+  </div>
+
+
+  <div class="sidebar-profile">
+
+    <div id="sideAvatar"
+         class="side-avatar">
+      👤
+    </div>
+
+    <div>
+      <b id="sideUsername">Guest</b>
+      <small id="sideLevel">Level 1</small>
+    </div>
 
   </div>
 
@@ -295,7 +343,8 @@
         Talk • Chill • Make new friends
       </small>
 
-      <button id="editTopicBtn" class="edit-topic">
+      <button id="editTopicBtn"
+              class="edit-topic">
         ✏️
       </button>
 
@@ -303,31 +352,36 @@
 
   </div>
 
-  <button id="usersBtn" class="users">
+  <button id="usersBtn"
+          class="users">
     👥 <span id="onlineCount">0</span>
   </button>
 
 </div>
 
 
-<!-- PUBLIC CHAT -->
-
+<!-- PUBLIC -->
 <div id="publicChat">
 
-  <div id="messages" class="messages"></div>
+  <div id="messages"
+       class="messages">
+  </div>
 
-  <div id="typingIndicator" class="typing-indicator"></div>
+  <div id="typingIndicator"
+       class="typing-indicator">
+  </div>
 
 </div>
 
 
-<!-- PRIVATE CHAT -->
-
-<div id="privateChat" class="private-chat hidden">
+<!-- PRIVATE -->
+<div id="privateChat"
+     class="private-chat hidden">
 
   <div class="private-head">
 
-    <button id="privateBackBtn" class="private-back">
+    <button id="privateBackBtn"
+            class="private-back">
       ←
     </button>
 
@@ -343,37 +397,40 @@
 
   </div>
 
-  <div id="privateMessages" class="messages"></div>
+  <div id="privateMessages"
+       class="messages">
+  </div>
 
-  <div id="privateTyping" class="typing-indicator"></div>
+  <div id="privateTyping"
+       class="typing-indicator">
+  </div>
 
 </div>
 
 
 <!-- COMPOSER -->
-
 <div class="composer">
 
-  <button id="emojiBtn" class="iconbtn">
+  <button id="emojiBtn"
+          class="iconbtn">
     ☺
   </button>
 
-  <input
-    id="messageInput"
-    maxlength="300"
-    placeholder="Write a message…"
-  >
+  <input id="messageInput"
+         maxlength="300"
+         placeholder="Write something...">
 
-  <button id="sendBtn" class="send">
+  <button id="sendBtn"
+          class="send">
     ➤
   </button>
 
 </div>
 
 
-<!-- EMOJIS -->
-
-<div id="emojiPanel" class="emoji-panel hidden">
+<!-- EMOJI -->
+<div id="emojiPanel"
+     class="emoji-panel hidden">
 
   <button>😀</button>
   <button>😃</button>
@@ -393,56 +450,55 @@
   <button>👀</button>
   <button>🎮</button>
   <button>🎵</button>
+  <button>💯</button>
+  <button>🚀</button>
 
 </div>
 
 </section>
 
 
-<!-- ONLINE USERS -->
+<!-- PEOPLE -->
+<aside id="people"
+       class="people">
 
-<aside id="people" class="people">
-
-  <h3>
-    Online now
-  </h3>
+  <h3>Online now</h3>
 
 </aside>
 
 </main>
 
 
-<!-- TOPIC MODAL -->
-
-<div id="topicModal" class="topic-modal hidden">
+<!-- TOPIC -->
+<div id="topicModal"
+     class="topic-modal hidden">
 
   <div class="topic-box">
 
-    <button id="closeTopicBtn" class="topic-close">
+    <button id="closeTopicBtn"
+            class="topic-close">
       ✕
     </button>
 
-    <h2>
-      ✏️ Edit Room Topic
-    </h2>
+    <h2>✏️ Room Topic</h2>
 
     <p id="topicRoomName">
       Chill Zone
     </p>
 
-    <input
-      id="topicInput"
-      maxlength="100"
-      placeholder="Write room topic..."
-    >
+    <input id="topicInput"
+           maxlength="100"
+           placeholder="Write room topic...">
 
     <div class="topic-actions">
 
-      <button id="cancelTopicBtn" class="topic-cancel">
+      <button id="cancelTopicBtn"
+              class="topic-cancel">
         Cancel
       </button>
 
-      <button id="saveTopicBtn" class="topic-save">
+      <button id="saveTopicBtn"
+              class="topic-save">
         Save Topic
       </button>
 
@@ -450,6 +506,13 @@
 
   </div>
 
+</div>
+
+
+<!-- XP TOAST -->
+<div id="xpToast"
+     class="xp-toast hidden">
+  ⭐ +XP
 </div>
 
 
