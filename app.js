@@ -1,5 +1,10 @@
 const $ = s => document.querySelector(s);
 
+
+/* =========================
+   SUPABASE
+========================= */
+
 const SUPABASE_URL =
   "https://uopwsaymtomnxfmacsnu.supabase.co";
 
@@ -14,36 +19,34 @@ const supabaseClient =
 
 
 /* =========================
-   USER / AUTH
+   STATE
 ========================= */
 
 let username =
-  localStorage.getItem("vibechat_name") || "";
+  localStorage.getItem("zuno_name") ||
+  localStorage.getItem("vibechat_name") ||
+  "";
 
 let currentUser = null;
 
 let authMode = "login";
-
-
-/* =========================
-   CHAT STATE
-========================= */
 
 let currentRoom = "Chill Zone";
 
 let privateUser = null;
 
 let realtimeChannel = null;
+let privateChannel = null;
 let onlineChannel = null;
 let typingChannel = null;
-let privateChannel = null;
 
-let onlineUserId = null;
 let heartbeatTimer = null;
 let typingTimer = null;
 
 let displayedMessages = new Set();
 let displayedPrivateMessages = new Set();
+
+let onlineUserId = null;
 
 
 const roomIcons = {
@@ -62,26 +65,37 @@ const defaultTopics = {
 };
 
 
-const samples = [
-  ["Nova","Welcome everyone! 👋"],
-  ["Arya","Anyone listening to something good? 🎵"],
-  ["Zayn","This room is actually pretty chill 😎"],
-  ["Pixel","Heyyy everyone ✨"]
-];
-
+/* =========================
+   SAFE HTML
+========================= */
 
 function escapeHtml(value){
 
-  return String(value).replace(
-    /[&<>"']/g,
-    c => ({
+  return String(value ?? "")
+    .replace(/[&<>"']/g, c => ({
       "&":"&amp;",
       "<":"&lt;",
       ">":"&gt;",
       '"':"&quot;",
       "'":"&#039;"
-    }[c])
-  );
+    }[c]));
+
+}
+
+
+/* =========================
+   AVATAR
+========================= */
+
+function defaultAvatar(name){
+
+  const letter =
+    String(name || "?")
+      .trim()
+      .charAt(0)
+      .toUpperCase() || "?";
+
+  return `https://ui-avatars.com/api/?name=${encodeURIComponent(letter)}&background=667eea&color=fff&size=200`;
 
 }
 
@@ -90,51 +104,37 @@ function escapeHtml(value){
    AUTH UI
 ========================= */
 
-function showAuth(mode = "login"){
+function showAuth(mode="login"){
 
   authMode = mode;
 
-  $("#authModal")
-    .classList
-    .remove("hidden");
+  $("#authModal").classList.remove("hidden");
 
-  if(mode === "signup"){
+  $("#authTitle").textContent =
+    mode === "login"
+      ? "Welcome Back"
+      : "Join ZUNO";
 
-    $("#authTitle").textContent =
-      "Create Account";
+  $("#authSubtitle").textContent =
+    mode === "login"
+      ? "Login to continue to ZUNO"
+      : "Create your ZUNO account";
 
-    $("#authSubtitle").textContent =
-      "Join VibeChat and start chatting";
+  $("#authSubmitBtn").textContent =
+    mode === "login"
+      ? "Login"
+      : "Create Account";
 
-    $("#authUsername")
-      .classList
-      .remove("hidden");
+  $("#authSwitchBtn").textContent =
+    mode === "login"
+      ? "Don't have an account? Sign up"
+      : "Already have an account? Login";
 
-    $("#authSubmitBtn").textContent =
-      "Create Account";
-
-    $("#authSwitchBtn").textContent =
-      "Already have an account? Login";
-
-  }else{
-
-    $("#authTitle").textContent =
-      "Welcome Back";
-
-    $("#authSubtitle").textContent =
-      "Login to continue to VibeChat";
-
-    $("#authUsername")
-      .classList
-      .add("hidden");
-
-    $("#authSubmitBtn").textContent =
-      "Login";
-
-    $("#authSwitchBtn").textContent =
-      "Don't have an account? Sign up";
-
-  }
+  $("#authUsername")
+    .classList.toggle(
+      "hidden",
+      mode === "login"
+    );
 
   $("#authMessage").textContent = "";
 
@@ -143,22 +143,19 @@ function showAuth(mode = "login"){
 
 function closeAuth(){
 
-  $("#authModal")
-    .classList
-    .add("hidden");
+  $("#authModal").classList.add("hidden");
 
 }
 
 
-function authMessage(text, error = false){
+function authMessage(text,error=false){
 
-  const box =
-    $("#authMessage");
+  const el = $("#authMessage");
 
-  box.textContent = text;
+  el.textContent = text;
 
-  box.style.color =
-    error ? "#ff6b81" : "";
+  el.style.color =
+    error ? "#ff7d8d" : "#8ea2ff";
 
 }
 
@@ -170,13 +167,10 @@ function authMessage(text, error = false){
 async function signup(){
 
   const email =
-    $("#authEmail")
-      .value
-      .trim();
+    $("#authEmail").value.trim();
 
   const password =
-    $("#authPassword")
-      .value;
+    $("#authPassword").value;
 
   const newUsername =
     $("#authUsername")
@@ -188,30 +182,37 @@ async function signup(){
   if(!email || !password || !newUsername){
 
     authMessage(
-      "Email, password aur username sab bharna zaroori hai.",
+      "Please fill all fields.",
       true
     );
 
     return;
-
   }
 
 
-  if(newUsername.length < 3){
+  if(password.length < 6){
 
     authMessage(
-      "Username kam se kam 3 characters ka hona chahiye.",
+      "Password must be at least 6 characters.",
       true
     );
 
     return;
-
   }
 
 
-  authMessage(
-    "Account create ho raha hai..."
-  );
+  if(!/^[a-zA-Z0-9_. -]+$/.test(newUsername)){
+
+    authMessage(
+      "Username can contain letters, numbers, _ . - only.",
+      true
+    );
+
+    return;
+  }
+
+
+  authMessage("Creating account...");
 
 
   try{
@@ -221,8 +222,8 @@ async function signup(){
       error
     } =
       await supabaseClient.auth.signUp({
-        email:email,
-        password:password
+        email,
+        password
       });
 
 
@@ -231,10 +232,11 @@ async function signup(){
 
     if(!data.user){
 
-      throw new Error(
-        "Account create nahi hua."
+      authMessage(
+        "Account created. Check your email to verify it."
       );
 
+      return;
     }
 
 
@@ -243,74 +245,37 @@ async function signup(){
     } =
       await supabaseClient
         .from("profiles")
-        .insert({
+        .upsert({
           id:data.user.id,
           username:newUsername
         });
 
 
-    if(profileError){
-
-      if(
-        profileError.code === "23505"
-      ){
-
-        authMessage(
-          "Ye username already taken hai. Dusra username choose karo.",
-          true
-        );
-
-      }else{
-
-        authMessage(
-          "Profile create error: " +
-          profileError.message,
-          true
-        );
-
-      }
-
-      return;
-
-    }
+    if(profileError)
+      throw profileError;
 
 
-    username =
-      newUsername;
-
-    currentUser =
-      data.user;
-
+    username = newUsername;
 
     localStorage.setItem(
-      "vibechat_name",
+      "zuno_name",
       username
     );
 
+    currentUser = data.user;
 
-    authMessage(
-      "Account successfully created! 🎉"
-    );
+    closeAuth();
 
+    updateUserUI();
 
-    setTimeout(
-      () => {
-
-        closeAuth();
-
-        $("#nameInput").value =
-          username;
-
-      },
-      700
-    );
-
+    enter(currentRoom);
 
   }catch(error){
 
+    console.error(error);
+
     authMessage(
-      error.message ||
-      "Signup failed.",
+      error.message || "Signup failed.",
       true
     );
 
@@ -326,30 +291,24 @@ async function signup(){
 async function login(){
 
   const email =
-    $("#authEmail")
-      .value
-      .trim();
+    $("#authEmail").value.trim();
 
   const password =
-    $("#authPassword")
-      .value;
+    $("#authPassword").value;
 
 
   if(!email || !password){
 
     authMessage(
-      "Email aur password enter karo.",
+      "Enter email and password.",
       true
     );
 
     return;
-
   }
 
 
-  authMessage(
-    "Login ho raha hai..."
-  );
+  authMessage("Logging in...");
 
 
   try{
@@ -358,45 +317,30 @@ async function login(){
       data,
       error
     } =
-      await supabaseClient.auth.signInWithPassword({
-        email:email,
-        password:password
-      });
+      await supabaseClient.auth
+        .signInWithPassword({
+          email,
+          password
+        });
 
 
     if(error) throw error;
 
 
-    currentUser =
-      data.user;
-
+    currentUser = data.user;
 
     await loadProfile();
 
+    closeAuth();
 
-    authMessage(
-      "Login successful! 🎉"
-    );
-
-
-    setTimeout(
-      () => {
-
-        closeAuth();
-
-        $("#nameInput").value =
-          username;
-
-      },
-      500
-    );
-
+    updateUserUI();
 
   }catch(error){
 
+    console.error(error);
+
     authMessage(
-      error.message ||
-      "Login failed.",
+      error.message || "Login failed.",
       true
     );
 
@@ -406,207 +350,192 @@ async function login(){
 
 
 /* =========================
-   LOAD PROFILE
+   PROFILE
 ========================= */
 
 async function loadProfile(){
 
-  if(!currentUser){
+  if(!currentUser) return;
 
-    return false;
 
+  const {
+    data,
+    error
+  } =
+    await supabaseClient
+      .from("profiles")
+      .select("username,bio,avatar_url")
+      .eq("id",currentUser.id)
+      .maybeSingle();
+
+
+  if(error){
+
+    console.error(error);
+    return;
   }
 
 
-  try{
-
-    const {
-      data,
-      error
-    } =
-      await supabaseClient
-        .from("profiles")
-        .select("username,bio,avatar_url")
-        .eq("id",currentUser.id)
-        .maybeSingle();
-
-
-    if(error) throw error;
-
-
-    if(!data){
-
-      return false;
-
-    }
-
+  if(data){
 
     username =
-      data.username;
-
+      data.username || username;
 
     localStorage.setItem(
-      "vibechat_name",
+      "zuno_name",
       username
     );
-
 
     $("#nameInput").value =
       username;
 
+    $("#profileUsername").value =
+      username;
 
-    return true;
+    $("#profileBio").value =
+      data.bio || "";
 
-
-  }catch(error){
-
-    console.error(
-      "Profile:",
-      error
-    );
-
-    return false;
+    $("#profileAvatar").src =
+      data.avatar_url ||
+      defaultAvatar(username);
 
   }
 
 }
 
 
-/* =========================
-   AUTH CHECK
-========================= */
+function updateUserUI(){
+
+  if(!currentUser){
+
+    $("#profileBtn")
+      .classList.add("hidden");
+
+    $("#logoutBtn")
+      .classList.add("hidden");
+
+    return;
+  }
+
+
+  $("#profileBtn")
+    .classList.remove("hidden");
+
+  $("#logoutBtn")
+    .classList.remove("hidden");
+
+  $("#nameInput").value =
+    username;
+
+  $("#sideUsername").textContent =
+    username;
+
+  loadSideAvatar();
+
+}
+
+
+async function loadSideAvatar(){
+
+  if(!currentUser) return;
+
+
+  const {
+    data
+  } =
+    await supabaseClient
+      .from("profiles")
+      .select("avatar_url")
+      .eq("id",currentUser.id)
+      .maybeSingle();
+
+
+  const avatar =
+    data?.avatar_url ||
+    defaultAvatar(username);
+
+
+  $("#sideAvatar").innerHTML =
+    `<img src="${avatar}" alt="">`;
+
+}
+
 
 async function checkAuth(){
 
   const {
     data
   } =
-    await supabaseClient.auth.getSession();
+    await supabaseClient.auth
+      .getSession();
 
 
-  currentUser =
-    data?.session?.user || null;
+  if(data.session){
 
+    currentUser =
+      data.session.user;
 
-  if(currentUser){
+    await loadProfile();
 
-    const loaded =
-      await loadProfile();
-
-
-    if(!loaded){
-
-      username = "";
-
-      showAuth("login");
-
-    }
+    updateUserUI();
 
   }else{
 
-    username = "";
+    currentUser = null;
 
-    localStorage.removeItem(
-      "vibechat_name"
-    );
+    $("#profileBtn")
+      .classList.add("hidden");
 
-  }
-
-}
-
-
-async function logout(){
-
-  if(heartbeatTimer){
-
-    clearInterval(
-      heartbeatTimer
-    );
-
-    heartbeatTimer = null;
+    $("#logoutBtn")
+      .classList.add("hidden");
 
   }
-
-
-  await removeOwnOnlineUser();
-
-
-  if(realtimeChannel){
-
-    await supabaseClient
-      .removeChannel(
-        realtimeChannel
-      );
-
-    realtimeChannel = null;
-
-  }
-
-
-  if(onlineChannel){
-
-    await supabaseClient
-      .removeChannel(
-        onlineChannel
-      );
-
-    onlineChannel = null;
-
-  }
-
-
-  if(typingChannel){
-
-    await supabaseClient
-      .removeChannel(
-        typingChannel
-      );
-
-    typingChannel = null;
-
-  }
-
-
-  closePrivateChat();
-
-
-  await supabaseClient.auth.signOut();
-
-
-  currentUser = null;
-  username = "";
-
-
-  localStorage.removeItem(
-    "vibechat_name"
-  );
-
-
-  $("#chat")
-    .classList
-    .add("hidden");
-
-  $("#home")
-    .classList
-    .remove("hidden");
-
-  $("#nameInput").value = "";
-
-  showAuth("login");
 
 }
 
 
 /* =========================
-   ROOM
+   LOGOUT
+========================= */
+
+async function logout(){
+
+  clearHeartbeat();
+
+  await removeOwnOnlineUser();
+
+  removeChannels();
+
+  await supabaseClient.auth.signOut();
+
+  currentUser = null;
+
+  privateUser = null;
+
+  username = "";
+
+  localStorage.removeItem("zuno_name");
+
+  $("#chat").classList.add("hidden");
+  $("#home").classList.remove("hidden");
+
+  $("#profileBtn")
+    .classList.add("hidden");
+
+  $("#logoutBtn")
+    .classList.add("hidden");
+
+}
+
+
+/* =========================
+   ROOMS
 ========================= */
 
 function renderRoom(){
 
   $("#roomTitle").textContent =
-    (roomIcons[currentRoom] || "💬") +
-    " " +
-    currentRoom;
+    `${roomIcons[currentRoom] || "💬"} ${currentRoom}`;
 
 
   document
@@ -623,48 +552,27 @@ function renderRoom(){
 }
 
 
-/* =========================
-   TOPIC
-========================= */
-
 async function loadRoomTopic(){
 
-  const topic =
-    $("#roomTopic");
-
-  topic.textContent =
+  $("#roomTopic").textContent =
     defaultTopics[currentRoom] || "";
 
 
-  try{
-
-    const {
-      data,
-      error
-    } =
-      await supabaseClient
-        .from("room_topics")
-        .select("topic")
-        .eq("room",currentRoom)
-        .maybeSingle();
+  const {
+    data,
+    error
+  } =
+    await supabaseClient
+      .from("room_topics")
+      .select("topic")
+      .eq("room",currentRoom)
+      .maybeSingle();
 
 
-    if(error) throw error;
+  if(!error && data?.topic){
 
-
-    if(data?.topic){
-
-      topic.textContent =
-        data.topic;
-
-    }
-
-  }catch(error){
-
-    console.log(
-      "Topic:",
-      error.message
-    );
+    $("#roomTopic").textContent =
+      data.topic;
 
   }
 
@@ -680,10 +588,7 @@ function openTopicEditor(){
     $("#roomTopic").textContent;
 
   $("#topicModal")
-    .classList
-    .remove("hidden");
-
-  $("#topicInput").focus();
+    .classList.remove("hidden");
 
 }
 
@@ -691,8 +596,7 @@ function openTopicEditor(){
 function closeTopicEditor(){
 
   $("#topicModal")
-    .classList
-    .add("hidden");
+    .classList.add("hidden");
 
 }
 
@@ -702,57 +606,48 @@ async function saveRoomTopic(){
   const topic =
     $("#topicInput")
       .value
-      .trim()
-      .slice(0,100);
+      .trim();
 
 
   if(!topic){
 
-    alert(
-      "Topic empty nahi ho sakta."
-    );
+    alert("Topic cannot be empty.");
 
     return;
-
   }
 
 
-  try{
-
-    const {
-      error
-    } =
-      await supabaseClient
-        .from("room_topics")
-        .upsert(
-          {
-            room:currentRoom,
-            topic:topic
-          },
-          {
-            onConflict:"room"
-          }
-        );
+  const {
+    error
+  } =
+    await supabaseClient
+      .from("room_topics")
+      .upsert(
+        {
+          room:currentRoom,
+          topic
+        },
+        {
+          onConflict:"room"
+        }
+      );
 
 
-    if(error) throw error;
-
-
-    $("#roomTopic").textContent =
-      topic;
-
-
-    closeTopicEditor();
-
-
-  }catch(error){
+  if(error){
 
     alert(
-      "Topic save nahi hua: " +
+      "Topic save error: " +
       error.message
     );
 
+    return;
   }
+
+
+  $("#roomTopic").textContent =
+    topic;
+
+  closeTopicEditor();
 
 }
 
@@ -763,258 +658,223 @@ async function saveRoomTopic(){
 
 async function removeOwnOnlineUser(){
 
-  if(!onlineUserId){
+  if(!username) return;
 
-    return;
+
+  try{
+
+    await supabaseClient
+      .from("online_users")
+      .delete()
+      .eq("username",username);
+
+  }catch(error){
+
+    console.error(error);
 
   }
-
-
-  await supabaseClient
-    .from("online_users")
-    .delete()
-    .eq(
-      "id",
-      onlineUserId
-    );
-
-
-  onlineUserId = null;
 
 }
 
 
 async function joinOnlineUsers(){
 
-  /* =========================
-     REMOVE OLD USER ROWS
-  ========================= */
+  if(!username) return;
 
-  if(username){
 
+  await removeOwnOnlineUser();
+
+
+  const {
+    data,
+    error
+  } =
     await supabaseClient
       .from("online_users")
-      .delete()
-      .eq(
-        "username",
-        username
-      );
-
-  }
-
-
-  onlineUserId = null;
+      .insert({
+        username,
+        room:currentRoom,
+        last_seen:Date.now()
+      })
+      .select()
+      .maybeSingle();
 
 
-  /* =========================
-     ADD CURRENT USER
-  ========================= */
-
-  try{
-
-    const {
-      data,
-      error
-    } =
-      await supabaseClient
-        .from("online_users")
-        .insert({
-          username:username,
-          room:currentRoom,
-          last_seen:Date.now()
-        })
-        .select("id")
-        .single();
-
-
-    if(error) throw error;
-
-
-    onlineUserId =
-      data.id;
-
-
-    await loadOnlineUsers();
-
-
-  }catch(error){
+  if(error){
 
     console.error(
-      "Online:",
+      "Online user error:",
       error
     );
 
+    return;
   }
+
+
+  onlineUserId =
+    data?.id || null;
+
+
+  await loadOnlineUsers();
 
 }
 
 
 async function loadOnlineUsers(){
 
-  try{
-
-    const cutoff =
-      Date.now() - 45000;
+  const cutoff =
+    Date.now() - 45000;
 
 
-    /* =========================
-       LOAD ONLINE USERS
-    ========================= */
-
-    const {
-      data,
-      error
-    } =
-      await supabaseClient
-        .from("online_users")
-        .select(
-          "id,username,room,last_seen"
-        )
-        .eq(
-          "room",
-          currentRoom
-        )
-        .gt(
-          "last_seen",
-          cutoff
-        )
-        .order(
-          "last_seen",
-          {
-            ascending:false
-          }
-        );
+  const {
+    data,
+    error
+  } =
+    await supabaseClient
+      .from("online_users")
+      .select("id,username,room,last_seen")
+      .eq("room",currentRoom)
+      .gt("last_seen",cutoff);
 
 
-    if(error) throw error;
+  if(error){
 
-
-    /* =========================
-       LOAD PROFILE PFPs
-    ========================= */
-
-    const {
-      data: profileData
-    } =
-      await supabaseClient
-        .from("profiles")
-        .select(
-          "username,avatar_url"
-        );
-
-
-    const avatarMap = {};
-
-
-    (profileData || []).forEach(
-      profile => {
-
-        avatarMap[profile.username] =
-          profile.avatar_url || "";
-
-      }
-    );
-
-
-    $("#onlineCount").textContent =
-      data?.length || 0;
-
-
-    const people =
-      $("#people");
-
-
-    people.innerHTML =
-      "<h3>Online now</h3>";
-
-
-    /* =========================
-       SHOW USERS
-    ========================= */
-
-    (data || []).forEach(
-      user => {
-
-        const div =
-          document.createElement("div");
-
-
-        div.className =
-          user.id === onlineUserId
-            ? "me"
-            : "person";
-
-
-        const avatar =
-          avatarMap[user.username] ||
-          defaultAvatar(user.username);
-
-
-        div.innerHTML = `
-          <img
-            class="online-avatar"
-            src="${escapeHtml(avatar)}"
-            alt=""
-          >
-
-          <div class="online-user-info">
-
-            <b>
-              ${escapeHtml(user.username)}
-            </b>
-
-            <small>
-              ${
-                user.id === onlineUserId
-                  ? "You"
-                  : "Chat"
-              }
-            </small>
-
-          </div>
-        `;
-
-
-        if(user.id !== onlineUserId){
-
-          div.style.cursor =
-            "pointer";
-
-          div.title =
-            "Open private chat";
-
-
-          div.onclick =
-            () => openPrivateChat(
-              user.username
-            );
-
-        }
-
-
-        people.appendChild(div);
-
-      }
-    );
-
-
-  }catch(error){
-
-    console.error(
-      "Users:",
-      error
-    );
-
-  }
-
+    console.error(error);
+    return;
   }
 
 
-/* =========================
-   HEARTBEAT
-========================= */
+  const {
+    data:profiles
+  } =
+    await supabaseClient
+      .from("profiles")
+      .select("username,avatar_url");
+
+
+  const avatarMap = {};
+
+  (profiles || []).forEach(profile => {
+
+    avatarMap[profile.username] =
+      profile.avatar_url ||
+      defaultAvatar(profile.username);
+
+  });
+
+
+  const people =
+    $("#people");
+
+
+  people.innerHTML =
+    `<h3>Online now</h3>`;
+
+
+  $("#onlineCount").textContent =
+    data?.length || 0;
+
+
+  if(!data?.length){
+
+    people.innerHTML +=
+      `<div class="empty-state">
+        <span>👀</span>
+        Nobody else is here.
+      </div>`;
+
+    return;
+  }
+
+
+  data.forEach(person => {
+
+    const div =
+      document.createElement("div");
+
+    div.className =
+      person.username === username
+        ? "me"
+        : "person";
+
+
+    const avatar =
+      avatarMap[person.username] ||
+      defaultAvatar(person.username);
+
+
+    div.innerHTML = `
+      <img
+        class="online-avatar"
+        src="${avatar}"
+        alt=""
+      >
+
+      <div class="online-user-info">
+
+        <b>
+          ${escapeHtml(person.username)}
+          ${person.username === username
+            ? " (you)"
+            : ""}
+        </b>
+
+        <small>
+          <span class="online-dot"></span>
+          online
+        </small>
+
+      </div>
+    `;
+
+
+    if(
+      person.username !== username
+    ){
+
+      div.onclick = () =>
+        openPrivateChat(
+          person.username
+        );
+
+    }
+
+
+    people.appendChild(div);
+
+  });
+
+}
+
 
 function startHeartbeat(){
+
+  clearHeartbeat();
+
+
+  heartbeatTimer =
+    setInterval(async () => {
+
+      if(!username) return;
+
+
+      await supabaseClient
+        .from("online_users")
+        .update({
+          last_seen:Date.now(),
+          room:currentRoom
+        })
+        .eq("username",username);
+
+
+      loadOnlineUsers();
+
+    },15000);
+
+}
+
+
+function clearHeartbeat(){
 
   if(heartbeatTimer){
 
@@ -1022,41 +882,12 @@ function startHeartbeat(){
       heartbeatTimer
     );
 
+    heartbeatTimer = null;
+
   }
-
-
-  heartbeatTimer =
-    setInterval(
-      async () => {
-
-        if(!onlineUserId) return;
-
-
-        await supabaseClient
-          .from("online_users")
-          .update({
-            last_seen:Date.now(),
-            username:username,
-            room:currentRoom
-          })
-          .eq(
-            "id",
-            onlineUserId
-          );
-
-
-        loadOnlineUsers();
-
-      },
-      15000
-    );
 
 }
 
-
-/* =========================
-   ONLINE REALTIME
-========================= */
 
 function setupOnlineRealtime(){
 
@@ -1073,7 +904,7 @@ function setupOnlineRealtime(){
   onlineChannel =
     supabaseClient
       .channel(
-        "online-" +
+        "online-users-" +
         Date.now()
       )
       .on(
@@ -1083,11 +914,7 @@ function setupOnlineRealtime(){
           schema:"public",
           table:"online_users"
         },
-        () => {
-
-          loadOnlineUsers();
-
-        }
+        () => loadOnlineUsers()
       )
       .subscribe();
 
@@ -1095,11 +922,11 @@ function setupOnlineRealtime(){
 
 
 /* =========================
-   ENTER CHAT
+   ENTER ROOM
 ========================= */
 
 async function enter(
-  room = currentRoom
+  room=currentRoom
 ){
 
   if(!currentUser){
@@ -1107,46 +934,27 @@ async function enter(
     showAuth("login");
 
     return;
-
   }
 
 
-  const name =
-    username;
-
-
-  if(!name){
+  if(!username){
 
     await loadProfile();
 
   }
 
 
-  if(!username){
-
-    showAuth("login");
-
-    return;
-
-  }
-
-
-  currentRoom =
-    room;
+  currentRoom = room;
 
 
   $("#home")
-    .classList
-    .add("hidden");
-
+    .classList.add("hidden");
 
   $("#chat")
-    .classList
-    .remove("hidden");
+    .classList.remove("hidden");
 
 
   renderRoom();
-
 
   await loadRoomTopic();
 
@@ -1175,185 +983,186 @@ async function renderMessages(){
     $("#messages");
 
 
-  /* =========================
-     LOAD PROFILE AVATARS
-  ========================= */
-
-  const {
-    data: profileData
-  } =
-    await supabaseClient
-      .from("profiles")
-      .select("username, avatar_url");
-
-
-  const avatarMap = {};
-
-
-  (profileData || []).forEach(
-    profile => {
-
-      avatarMap[profile.username] =
-        profile.avatar_url || "";
-
-    }
-  );
-
-
-  /* =========================
-     CLEAR OLD MESSAGES
-  ========================= */
-
   box.innerHTML = "";
 
   displayedMessages.clear();
 
 
-  /* =========================
-     SAMPLE MESSAGES
-  ========================= */
-
-  samples.forEach(
-    ([name,text]) => {
-
-      addMsg(
-        name,
-        text,
-        false
-      );
-
-    }
-  );
+  const {
+    data:profiles
+  } =
+    await supabaseClient
+      .from("profiles")
+      .select("username,avatar_url");
 
 
-  /* =========================
-     LOAD DATABASE MESSAGES
-  ========================= */
+  const avatarMap = {};
 
-  try{
 
-    const {
-      data,
+  (profiles || []).forEach(profile => {
+
+    avatarMap[profile.username] =
+      profile.avatar_url ||
+      defaultAvatar(profile.username);
+
+  });
+
+
+  const {
+    data,
+    error
+  } =
+    await supabaseClient
+      .from("messages")
+      .select("*")
+      .eq("room",currentRoom)
+      .order("created_at",{
+        ascending:true
+      });
+
+
+  if(error){
+
+    console.error(
+      "Messages error:",
       error
-    } =
-      await supabaseClient
-        .from("messages")
-        .select("*")
-        .eq(
-          "room",
-          currentRoom
-        )
-        .order(
-          "created_at",
-          {
-            ascending:true
-          }
-        );
+    );
+
+    return;
+  }
 
 
-    if(error) throw error;
+  if(!data?.length){
+
+    box.innerHTML =
+      `<div class="empty-state">
+        <span>💬</span>
+        Be the first to say something.
+      </div>`;
+
+    return;
+  }
 
 
-    (data || []).forEach(
-      message => {
+  data.forEach(message => {
 
-        addMsg(
-          message.name,
-          message.text,
-          message.name === username,
-          {
-            ...message,
-            avatar_url:
-              avatarMap[message.name] || ""
-          }
-        );
-
+    addMsg(
+      message.name,
+      message.text,
+      message.name === username,
+      {
+        ...message,
+        avatar_url:
+          avatarMap[message.name] ||
+          defaultAvatar(message.name)
       }
     );
 
-
-    box.scrollTop =
-      box.scrollHeight;
+  });
 
 
-  }catch(error){
-
-    console.error(
-      "Messages:",
-      error
-    );
-
-  }
+  box.scrollTop =
+    box.scrollHeight;
 
 }
+
 
 function addMsg(
   name,
   text,
-  mine,
-  message = null
+  mine=false,
+  message=null
 ){
 
   const key =
     message
       ? `${message.room}|${message.name}|${message.text}|${message.created_at}`
-      : `sample|${name}|${text}`;
+      : `${name}|${text}`;
 
-  if(displayedMessages.has(key)){
+
+  if(displayedMessages.has(key))
     return;
-  }
+
 
   displayedMessages.add(key);
 
+
+  const box =
+    $("#messages");
+
+
+  const empty =
+    box.querySelector(".empty-state");
+
+  if(empty)
+    empty.remove();
+
+
   const div =
     document.createElement("div");
+
 
   div.className =
     "msg" +
     (mine ? " mine" : "");
 
+
   const avatar =
     message?.avatar_url ||
     defaultAvatar(name);
 
+
   div.innerHTML = `
+
     <div class="msg-user">
 
-  <img
-    class="msg-avatar"
-    src="${escapeHtml(avatar)}"
-    alt=""
-  >
+      <img
+        class="msg-avatar"
+        src="${avatar}"
+        alt=""
+      >
 
-  <div class="meta">
-    ${escapeHtml(name)}
-  </div>
+      <div class="meta">
+        ${escapeHtml(name)}
+      </div>
 
-</div>
+    </div>
+
+    <div class="bubble">
+      ${escapeHtml(text)}
+    </div>
+
   `;
 
-  $("#messages")
-    .appendChild(div);
+
+  box.appendChild(div);
+
 }
 
-
-/* =========================
-   PUBLIC SEND
-========================= */
 
 async function send(){
 
   if(privateUser){
+
     await sendPrivate();
+
     return;
   }
 
-  const input = $("#messageInput");
-  const text = input.value.trim();
 
-  if(!text || !username){
+  const input =
+    $("#messageInput");
+
+  const text =
+    input.value.trim();
+
+
+  if(!text || !username)
     return;
-  }
+
+
+  input.disabled = true;
+
 
   try{
 
@@ -1364,104 +1173,63 @@ async function send(){
       await supabaseClient
         .from("messages")
         .insert({
-          room: currentRoom,
-          name: username,
-          text: text,
-          created_at: Date.now()
+          room:currentRoom,
+          name:username,
+          text,
+          created_at:Date.now()
         })
         .select()
         .single();
 
-    if(error) throw error;
+
+    if(error)
+      throw error;
+
 
     const {
-      data: profile
+      data:profile
     } =
       await supabaseClient
         .from("profiles")
         .select("avatar_url")
-        .eq("username", username)
+        .eq("username",username)
         .maybeSingle();
 
-    const messageWithAvatar = {
-      ...data,
-      avatar_url: profile?.avatar_url || ""
-    };
 
     addMsg(
       username,
       text,
       true,
-      messageWithAvatar
+      {
+        ...data,
+        avatar_url:
+          profile?.avatar_url ||
+          defaultAvatar(username)
+      }
     );
 
+
     input.value = "";
+
+    addXP(2);
+
 
     $("#messages").scrollTop =
       $("#messages").scrollHeight;
 
   }catch(error){
 
-    console.error("Message send error:", error);
+    console.error(error);
 
     alert(
       "Message send error: " +
       error.message
     );
 
-  }
+  }finally{
 
-}
-
-    /* =========================
-       GET MY PFP
-    ========================= */
-
-    const {
-  data:profile
-} =
-  await supabaseClient
-    .from("profiles")
-    .select("avatar_url")
-    .eq(
-      "username",
-      username
-    )
-    .maybeSingle();
-
-    const messageWithAvatar = {
-      ...data,
-      avatar_url:
-        profile?.avatar_url || ""
-    };
-
-
-    addMsg(
-      username,
-      text,
-      true,
-      messageWithAvatar
-    );
-
-
-    input.value = "";
-
-
-    $("#messages").scrollTop =
-      $("#messages").scrollHeight;
-
-
-  }catch(error){
-
-    console.error(
-      "Message send error:",
-      error
-    );
-
-    alert(
-      "Message send error: " +
-      error.message
-    );
+    input.disabled = false;
+    input.focus();
 
   }
 
@@ -1469,7 +1237,7 @@ async function send(){
 
 
 /* =========================
-   PUBLIC REALTIME
+   REALTIME PUBLIC
 ========================= */
 
 function setupRealtime(){
@@ -1499,17 +1267,43 @@ function setupRealtime(){
           filter:
             `room=eq.${currentRoom}`
         },
-        payload => {
+        async payload => {
 
           const message =
             payload.new;
 
 
+          if(
+            message.name === username
+          )
+            return;
+
+
+          const {
+            data:profile
+          } =
+            await supabaseClient
+              .from("profiles")
+              .select("avatar_url")
+              .eq(
+                "username",
+                message.name
+              )
+              .maybeSingle();
+
+
           addMsg(
             message.name,
             message.text,
-            message.name === username,
-            message
+            false,
+            {
+              ...message,
+              avatar_url:
+                profile?.avatar_url ||
+                defaultAvatar(
+                  message.name
+                )
+            }
           );
 
 
@@ -1543,54 +1337,65 @@ function setupTyping(){
     supabaseClient
       .channel(
         "typing-" +
-        currentRoom +
-        "-" +
-        Date.now()
-      )
-      .on(
-        "broadcast",
-        {
-          event:"typing"
-        },
-        payload => {
-
-          const data =
-            payload.payload;
+        currentRoom
+      );
 
 
-          if(
-            data &&
-            data.username !== username &&
-            data.room === currentRoom
-          ){
+  typingChannel
+    .on(
+      "broadcast",
+      {
+        event:"typing"
+      },
+      payload => {
+
+        if(
+          payload.payload.username ===
+          username
+        )
+          return;
+
+
+        $("#typingIndicator")
+          .textContent =
+            `${payload.payload.username} is typing...`;
+
+
+        clearTimeout(typingTimer);
+
+
+        typingTimer =
+          setTimeout(() => {
 
             $("#typingIndicator")
-              .textContent =
-              data.username +
-              " is typing...";
+              .textContent = "";
+
+          },1500);
+
+      }
+    )
+    .subscribe();
+
+}
 
 
-            clearTimeout(
-              window.publicTypingTimer
-            );
+async function broadcastTyping(){
+
+  if(
+    !typingChannel ||
+    !username ||
+    privateUser
+  )
+    return;
 
 
-            window.publicTypingTimer =
-              setTimeout(
-                () => {
-
-                  $("#typingIndicator")
-                    .textContent = "";
-
-                },
-                1800
-              );
-
-          }
-
-        }
-      )
-      .subscribe();
+  await typingChannel.send({
+    type:"broadcast",
+    event:"typing",
+    payload:{
+      username
+    }
+  });
 
 }
 
@@ -1599,39 +1404,30 @@ function setupTyping(){
    PRIVATE CHAT
 ========================= */
 
-async function openPrivateChat(
-  user
-){
+async function openPrivateChat(user){
 
-  privateUser =
-    user;
+  if(!user || user === username)
+    return;
+
+
+  privateUser = user;
 
 
   $("#publicChat")
-    .classList
-    .add("hidden");
-
+    .classList.add("hidden");
 
   $("#privateChat")
-    .classList
-    .remove("hidden");
+    .classList.remove("hidden");
 
+  $("#people")
+    .classList.remove("show");
 
   $("#privateUserName")
-    .textContent =
-    user;
-
+    .textContent = user;
 
   $("#messageInput")
     .placeholder =
-    "Message " +
-    user +
-    "...";
-
-
-  $("#people")
-    .classList
-    .remove("show");
+      `Message ${user}...`;
 
 
   await renderPrivateMessages();
@@ -1652,52 +1448,40 @@ async function renderPrivateMessages(){
   displayedPrivateMessages.clear();
 
 
-  try{
-
-    const {
-      data,
-      error
-    } =
-      await supabaseClient
-        .from("private_messages")
-        .select("*")
-        .or(
-          `and(sender.eq.${username},receiver.eq.${privateUser}),and(sender.eq.${privateUser},receiver.eq.${username})`
-        )
-        .order(
-          "created_at",
-          {
-            ascending:true
-          }
-        );
+  const {
+    data,
+    error
+  } =
+    await supabaseClient
+      .from("private_messages")
+      .select("*")
+      .or(
+        `and(sender.eq.${username},receiver.eq.${privateUser}),and(sender.eq.${privateUser},receiver.eq.${username})`
+      )
+      .order("created_at",{
+        ascending:true
+      });
 
 
-    if(error) throw error;
+  if(error){
 
+    console.error(error);
 
-    (data || []).forEach(
-      message => {
-
-        addPrivateMsg(
-          message
-        );
-
-      }
-    );
-
-
-    box.scrollTop =
-      box.scrollHeight;
-
-
-  }catch(error){
-
-    console.error(
-      "Private messages:",
-      error
-    );
-
+    return;
   }
+
+
+  data?.forEach(message => {
+
+    addPrivateMsg(
+      message
+    );
+
+  });
+
+
+  box.scrollTop =
+    box.scrollHeight;
 
 }
 
@@ -1705,27 +1489,28 @@ async function renderPrivateMessages(){
 function addPrivateMsg(message){
 
   const key =
-    String(message.id);
+    `${message.sender}|${message.receiver}|${message.text}|${message.created_at}`;
 
 
   if(
     displayedPrivateMessages.has(key)
-  ){
-
+  )
     return;
-
-  }
 
 
   displayedPrivateMessages.add(key);
 
 
-  const mine =
-    message.sender === username;
+  const box =
+    $("#privateMessages");
 
 
   const div =
     document.createElement("div");
+
+
+  const mine =
+    message.sender === username;
 
 
   div.className =
@@ -1734,42 +1519,48 @@ function addPrivateMsg(message){
 
 
   div.innerHTML = `
-    <div class="meta">
-      ${escapeHtml(message.sender)}
+
+    <div class="msg-user">
+
+      <img
+        class="msg-avatar"
+        src="${defaultAvatar(message.sender)}"
+        alt=""
+      >
+
+      <div class="meta">
+        ${escapeHtml(message.sender)}
+      </div>
+
     </div>
 
     <div class="bubble">
       ${escapeHtml(message.text)}
     </div>
+
   `;
 
 
-  $("#privateMessages")
-    .appendChild(div);
+  box.appendChild(div);
 
 }
 
 
 async function sendPrivate(){
 
+  if(!privateUser)
+    return;
+
+
   const input =
     $("#messageInput");
-
 
   const text =
     input.value.trim();
 
 
-  if(
-    !text ||
-    !username ||
-    !privateUser ||
-    !currentUser
-  ){
-
+  if(!text)
     return;
-
-  }
 
 
   try{
@@ -1783,27 +1574,30 @@ async function sendPrivate(){
         .insert({
           sender:username,
           receiver:privateUser,
-          text:text,
+          text,
           created_at:Date.now()
         })
         .select()
         .single();
 
 
-    if(error) throw error;
+    if(error)
+      throw error;
 
 
     addPrivateMsg(data);
 
-
     input.value = "";
+
+    addXP(3);
 
 
     $("#privateMessages").scrollTop =
       $("#privateMessages").scrollHeight;
 
-
   }catch(error){
+
+    console.error(error);
 
     alert(
       "Private message error: " +
@@ -1848,23 +1642,37 @@ function setupPrivateRealtime(){
 
           const valid =
             (
-              message.sender === privateUser &&
-              message.receiver === username
+              message.sender ===
+              username &&
+              message.receiver ===
+              privateUser
             ) ||
             (
-              message.sender === username &&
-              message.receiver === privateUser
+              message.sender ===
+              privateUser &&
+              message.receiver ===
+              username
             );
 
 
-          if(!valid) return;
+          if(!valid)
+            return;
+
+
+          if(
+            message.sender ===
+            username
+          )
+            return;
 
 
           addPrivateMsg(message);
 
 
-          $("#privateMessages").scrollTop =
-            $("#privateMessages").scrollHeight;
+          $("#privateMessages")
+            .scrollTop =
+              $("#privateMessages")
+                .scrollHeight;
 
         }
       )
@@ -1879,18 +1687,14 @@ function closePrivateChat(){
 
 
   $("#privateChat")
-    .classList
-    .add("hidden");
-
+    .classList.add("hidden");
 
   $("#publicChat")
-    .classList
-    .remove("hidden");
-
+    .classList.remove("hidden");
 
   $("#messageInput")
     .placeholder =
-    "Write a message…";
+      "Write something...";
 
 
   if(privateChannel){
@@ -1900,7 +1704,6 @@ function closePrivateChat(){
         privateChannel
       );
 
-
     privateChannel = null;
 
   }
@@ -1909,107 +1712,456 @@ function closePrivateChat(){
 
 
 /* =========================
-   USERS
+   XP SYSTEM
 ========================= */
 
-$("#usersBtn").onclick =
-  () => {
+function getXP(){
 
-    $("#people")
-      .classList
-      .toggle("show");
-
-  };
+  if(!currentUser)
+    return 0;
 
 
-/* =========================
-   ROOMS
-========================= */
+  return Number(
+    localStorage.getItem(
+      "zuno_xp_" +
+      currentUser.id
+    ) || 0
+  );
 
-document
-  .querySelectorAll(".roomcard")
-  .forEach(button => {
+}
 
-    button.onclick =
-      () => enter(
-        button.dataset.room
+
+function getLevel(xp){
+
+  return Math.floor(
+    xp / 100
+  ) + 1;
+
+}
+
+
+function addXP(amount){
+
+  if(!currentUser)
+    return;
+
+
+  const oldXP =
+    getXP();
+
+  const newXP =
+    oldXP + amount;
+
+
+  localStorage.setItem(
+    "zuno_xp_" +
+    currentUser.id,
+    newXP
+  );
+
+
+  const oldLevel =
+    getLevel(oldXP);
+
+  const newLevel =
+    getLevel(newXP);
+
+
+  showXP(
+    `⭐ +${amount} XP`
+  );
+
+
+  $("#sideLevel")
+    .textContent =
+      `Level ${newLevel}`;
+
+
+  if(newLevel > oldLevel){
+
+    setTimeout(() => {
+
+      alert(
+        `🎉 Level Up!\n\nYou reached Level ${newLevel}!`
       );
 
-  });
+    },200);
+
+  }
+
+}
 
 
-document
-  .querySelectorAll(".room")
-  .forEach(button => {
+function updateLevel(){
 
-    button.onclick =
-      async () => {
-
-        if(!currentUser){
-
-          showAuth("login");
-
-          return;
-
-        }
+  const level =
+    getLevel(
+      getXP()
+    );
 
 
-        const newRoom =
-          button.dataset.room;
+  $("#sideLevel")
+    .textContent =
+      `Level ${level}`;
+
+}
 
 
-        if(
-          newRoom === currentRoom
-        ){
+function showXP(text){
 
-          return;
-
-        }
+  const toast =
+    $("#xpToast");
 
 
-        closePrivateChat();
+  toast.textContent =
+    text;
 
 
-        currentRoom =
-          newRoom;
+  toast.classList.remove(
+    "hidden"
+  );
 
 
-        renderRoom();
+  setTimeout(() => {
 
+    toast.classList.add(
+      "hidden"
+    );
 
-        await joinOnlineUsers();
+  },1200);
 
-        await loadRoomTopic();
-
-        await renderMessages();
-
-        setupRealtime();
-
-        setupTyping();
-
-      };
-
-  });
+}
 
 
 /* =========================
-   JOIN
+   PROFILE MODAL
 ========================= */
 
-$("#joinBtn").onclick =
-  () => {
+async function openProfile(){
 
-    if(currentUser){
+  if(!currentUser){
 
-      enter();
+    showAuth("login");
 
-    }else{
+    return;
+  }
 
-      showAuth("login");
+
+  await loadProfile();
+
+
+  $("#profileModal")
+    .classList.remove("hidden");
+
+}
+
+
+function closeProfile(){
+
+  $("#profileModal")
+    .classList.add("hidden");
+
+  $("#profileMessage")
+    .textContent = "";
+
+}
+
+
+async function uploadAvatar(){
+
+  const file =
+    $("#avatarInput").files[0];
+
+
+  if(!file)
+    return null;
+
+
+  if(file.size > 5 * 1024 * 1024){
+
+    throw new Error(
+      "Image must be under 5MB."
+    );
+
+  }
+
+
+  const extension =
+    file.name
+      .split(".")
+      .pop()
+      .toLowerCase();
+
+
+  const path =
+    `${currentUser.id}/avatar.${extension}`;
+
+
+  const {
+    error
+  } =
+    await supabaseClient.storage
+      .from("avatars")
+      .upload(
+        path,
+        file,
+        {
+          upsert:true,
+          contentType:file.type
+        }
+      );
+
+
+  if(error)
+    throw error;
+
+
+  const {
+    data
+  } =
+    supabaseClient.storage
+      .from("avatars")
+      .getPublicUrl(path);
+
+
+  return data.publicUrl +
+    "?t=" +
+    Date.now();
+
+}
+
+
+async function saveProfile(){
+
+  if(!currentUser)
+    return;
+
+
+  const newName =
+    $("#profileUsername")
+      .value
+      .trim()
+      .slice(0,20);
+
+
+  const bio =
+    $("#profileBio")
+      .value
+      .trim()
+      .slice(0,120);
+
+
+  if(newName.length < 3){
+
+    $("#profileMessage")
+      .textContent =
+        "Username must be at least 3 characters.";
+
+    return;
+  }
+
+
+  if(
+    !/^[a-zA-Z0-9_. -]+$/.test(
+      newName
+    )
+  ){
+
+    $("#profileMessage")
+      .textContent =
+        "Username contains invalid characters.";
+
+    return;
+  }
+
+
+  $("#profileMessage")
+    .textContent =
+      "Saving...";
+
+
+  try{
+
+    let avatarUrl = null;
+
+
+    if(
+      $("#avatarInput").files.length
+    ){
+
+      avatarUrl =
+        await uploadAvatar();
 
     }
 
-  };
+
+    const updateData = {
+      username:newName,
+      bio
+    };
+
+
+    if(avatarUrl)
+      updateData.avatar_url =
+        avatarUrl;
+
+
+    const {
+      error
+    } =
+      await supabaseClient
+        .from("profiles")
+        .update(updateData)
+        .eq("id",currentUser.id);
+
+
+    if(error)
+      throw error;
+
+
+    username = newName;
+
+
+    localStorage.setItem(
+      "zuno_name",
+      username
+    );
+
+
+    $("#nameInput").value =
+      username;
+
+    $("#sideUsername")
+      .textContent =
+        username;
+
+
+    await loadProfile();
+
+    await loadSideAvatar();
+
+    await loadOnlineUsers();
+
+
+    $("#profileMessage")
+      .textContent =
+        "✓ Profile updated!";
+
+
+    setTimeout(
+      closeProfile,
+      700
+    );
+
+
+  }catch(error){
+
+    console.error(error);
+
+    $("#profileMessage")
+      .textContent =
+        error.message ||
+        "Profile update failed.";
+
+  }
+
+}
+
+
+/* =========================
+   CHANNEL CLEANUP
+========================= */
+
+function removeChannels(){
+
+  const channels = [
+    realtimeChannel,
+    privateChannel,
+    onlineChannel,
+    typingChannel
+  ];
+
+
+  channels.forEach(channel => {
+
+    if(channel){
+
+      supabaseClient
+        .removeChannel(channel);
+
+    }
+
+  });
+
+
+  realtimeChannel = null;
+  privateChannel = null;
+  onlineChannel = null;
+  typingChannel = null;
+
+}
+
+
+/* =========================
+   THEME
+========================= */
+
+function loadTheme(){
+
+  const theme =
+    localStorage.getItem(
+      "zuno_theme"
+    ) ||
+    localStorage.getItem(
+      "vibechat_theme"
+    );
+
+
+  if(theme === "light"){
+
+    document.body
+      .classList.add("light");
+
+    $("#themeBtn")
+      .textContent = "☀";
+
+  }
+
+}
+
+
+function toggleTheme(){
+
+  const light =
+    document.body
+      .classList.toggle("light");
+
+
+  localStorage.setItem(
+    "zuno_theme",
+    light ? "light" : "dark"
+  );
+
+
+  $("#themeBtn")
+    .textContent =
+      light ? "☀" : "☾";
+
+}
+
+
+/* =========================
+   EVENTS
+========================= */
+
+$("#joinBtn").onclick = () => {
+
+  if(currentUser)
+    enter(currentRoom);
+  else
+    showAuth("login");
+
+};
 
 
 $("#nameInput").addEventListener(
@@ -2018,15 +2170,10 @@ $("#nameInput").addEventListener(
 
     if(e.key === "Enter"){
 
-      if(currentUser){
-
-        enter();
-
-      }else{
-
+      if(currentUser)
+        enter(currentRoom);
+      else
         showAuth("login");
-
-      }
 
     }
 
@@ -2034,9 +2181,53 @@ $("#nameInput").addEventListener(
 );
 
 
-/* =========================
-   SEND
-========================= */
+document
+  .querySelectorAll(".roomcard")
+  .forEach(card => {
+
+    card.onclick = () =>
+      enter(card.dataset.room);
+
+  });
+
+
+document
+  .querySelectorAll(".room")
+  .forEach(button => {
+
+    button.onclick = async () => {
+
+      if(!currentUser){
+
+        showAuth("login");
+
+        return;
+      }
+
+
+      closePrivateChat();
+
+
+      currentRoom =
+        button.dataset.room;
+
+
+      renderRoom();
+
+      await joinOnlineUsers();
+
+      await loadRoomTopic();
+
+      await renderMessages();
+
+      setupRealtime();
+
+      setupTyping();
+
+    };
+
+  });
+
 
 $("#sendBtn").onclick =
   send;
@@ -2046,67 +2237,27 @@ $("#messageInput").addEventListener(
   "keydown",
   e => {
 
-    if(e.key === "Enter"){
-
+    if(e.key === "Enter")
       send();
-
-    }
 
   }
 );
 
-
-/* =========================
-   TYPING
-========================= */
 
 $("#messageInput").addEventListener(
   "input",
-  async () => {
-
-    if(
-      !typingChannel ||
-      privateUser
-    ){
-
-      return;
-
-    }
-
-
-    await typingChannel.send({
-      type:"broadcast",
-      event:"typing",
-      payload:{
-        username:username,
-        room:currentRoom
-      }
-    });
-
-  }
+  broadcastTyping
 );
 
 
-/* =========================
-   PRIVATE BACK
-========================= */
+$("#emojiBtn").onclick = () => {
 
-$("#privateBackBtn").onclick =
-  closePrivateChat;
+  $("#emojiPanel")
+    .classList.toggle(
+      "hidden"
+    );
 
-
-/* =========================
-   EMOJI
-========================= */
-
-$("#emojiBtn").onclick =
-  () => {
-
-    $("#emojiPanel")
-      .classList
-      .toggle("hidden");
-
-  };
+};
 
 
 document
@@ -2115,77 +2266,74 @@ document
   )
   .forEach(button => {
 
-    button.onclick =
-      () => {
+    button.onclick = () => {
 
-        $("#messageInput")
-          .value +=
-          button.textContent;
+      const input =
+        $("#messageInput");
 
 
-        $("#messageInput")
-          .focus();
+      input.value +=
+        button.textContent;
 
-      };
+
+      input.focus();
+
+    };
 
   });
 
 
-/* =========================
-   TOPIC
-========================= */
+$("#usersBtn").onclick = () => {
+
+  $("#people")
+    .classList.toggle("show");
+
+};
+
+
+$("#privateBackBtn").onclick =
+  closePrivateChat;
+
 
 $("#editTopicBtn").onclick =
   openTopicEditor;
 
+
 $("#closeTopicBtn").onclick =
   closeTopicEditor;
 
+
 $("#cancelTopicBtn").onclick =
   closeTopicEditor;
+
 
 $("#saveTopicBtn").onclick =
   saveRoomTopic;
 
 
-/* =========================
-   AUTH BUTTONS
-========================= */
-
-$("#authSubmitBtn").onclick =
-  async () => {
-
-    if(authMode === "signup"){
-
-      await signup();
-
-    }else{
-
-      await login();
-
-    }
-
-  };
-
-
-$("#authSwitchBtn").onclick =
-  () => {
-
-    if(authMode === "login"){
-
-      showAuth("signup");
-
-    }else{
-
-      showAuth("login");
-
-    }
-
-  };
-
-
 $("#closeAuthBtn").onclick =
   closeAuth;
+
+
+$("#authSwitchBtn").onclick = () => {
+
+  showAuth(
+    authMode === "login"
+      ? "signup"
+      : "login"
+  );
+
+};
+
+
+$("#authSubmitBtn").onclick = () => {
+
+  if(authMode === "login")
+    login();
+  else
+    signup();
+
+};
 
 
 $("#authPassword").addEventListener(
@@ -2194,15 +2342,10 @@ $("#authPassword").addEventListener(
 
     if(e.key === "Enter"){
 
-      if(authMode === "signup"){
-
-        signup();
-
-      }else{
-
+      if(authMode === "login")
         login();
-
-      }
+      else
+        signup();
 
     }
 
@@ -2210,414 +2353,12 @@ $("#authPassword").addEventListener(
 );
 
 
-/* =========================
-   LOGOUT BUTTON
-========================= */
+$("#logoutBtn").onclick =
+  logout;
 
-const topbar =
-  document.querySelector(".topbar");
 
-
-if(topbar){
-
-  const logoutBtn =
-    document.createElement("button");
-
-
-  logoutBtn.id =
-    "logoutBtn";
-
-  logoutBtn.className =
-    "iconbtn";
-
-  logoutBtn.textContent =
-    "↪";
-
-
-  logoutBtn.title =
-    "Logout";
-
-
-  topbar.appendChild(
-    logoutBtn
-  );
-
-
-  logoutBtn.onclick =
-    logout;
-
-}
-
-
-/* =========================
-   THEME
-========================= */
-
-const savedTheme =
-  localStorage.getItem(
-    "vibechat_theme"
-  );
-
-
-if(savedTheme === "light"){
-
-  document.body
-    .classList
-    .add("light");
-
-
-  $("#themeBtn")
-    .textContent = "☀";
-
-}
-
-
-$("#themeBtn").onclick =
-  () => {
-
-    document.body
-      .classList
-      .toggle("light");
-
-
-    const light =
-      document.body
-        .classList
-        .contains("light");
-
-
-    localStorage.setItem(
-      "vibechat_theme",
-      light
-        ? "light"
-        : "dark"
-    );
-
-
-    $("#themeBtn")
-      .textContent =
-      light ? "☀" : "☾";
-
-  };
-
-
-/* =========================
-   BACK
-========================= */
-
-$("#backBtn").onclick =
-  async () => {
-
-    if(heartbeatTimer){
-
-      clearInterval(
-        heartbeatTimer
-      );
-
-      heartbeatTimer = null;
-
-    }
-
-
-    await removeOwnOnlineUser();
-
-
-    if(realtimeChannel){
-
-      supabaseClient
-        .removeChannel(
-          realtimeChannel
-        );
-
-    }
-
-
-    if(onlineChannel){
-
-      supabaseClient
-        .removeChannel(
-          onlineChannel
-        );
-
-    }
-
-
-    if(typingChannel){
-
-      supabaseClient
-        .removeChannel(
-          typingChannel
-        );
-
-    }
-
-
-    closePrivateChat();
-
-
-    $("#chat")
-      .classList
-      .add("hidden");
-
-
-    $("#home")
-      .classList
-      .remove("hidden");
-
-  };
-
-
-/* =========================
-   START
-========================= */
-
-(async function(){
-
-  renderRoom();
-
-  await checkAuth();
-
-})();
-
-// =========================
-// V4 PROFILE SYSTEM
-// =========================
-
-function defaultAvatar(name = "User"){
-  const letter =
-    (name || "U").charAt(0).toUpperCase();
-
-  return (
-    "https://ui-avatars.com/api/" +
-    "?name=" +
-    encodeURIComponent(letter) +
-    "&background=667eea&color=fff&size=200"
-  );
-}
-
-
-async function loadMyProfile(){
-
-  if(!currentUser) return;
-
-  const {
-    data,
-    error
-  } =
-    await supabaseClient
-      .from("profiles")
-      .select("username,bio,avatar_url")
-      .eq("id", currentUser.id)
-      .maybeSingle();
-
-  if(error){
-    console.error("Profile load:", error);
-    return;
-  }
-
-  if(!data) return;
-
-  $("#profileUsername").value =
-    data.username || "";
-
-  $("#profileBio").value =
-    data.bio || "";
-
-  $("#profileAvatar").src =
-    data.avatar_url ||
-    defaultAvatar(data.username);
-}
-
-
-function openProfile(){
-
-  if(!currentUser){
-    showAuth("login");
-    return;
-  }
-
-  loadMyProfile();
-
-  $("#profileModal")
-    .classList
-    .remove("hidden");
-}
-
-
-function closeProfile(){
-
-  $("#profileModal")
-    .classList
-    .add("hidden");
-
-  $("#profileMessage").textContent = "";
-}
-
-
-async function uploadAvatar(file){
-
-  if(!file || !currentUser){
-    return null;
-  }
-
-  if(!file.type.startsWith("image/")){
-    throw new Error(
-      "Sirf image file upload karo."
-    );
-  }
-
-  if(file.size > 5 * 1024 * 1024){
-    throw new Error(
-      "Image 5MB se chhoti honi chahiye."
-    );
-  }
-
-  const extension =
-    file.name.split(".").pop() || "jpg";
-
-  const filePath =
-    currentUser.id +
-    "/avatar." +
-    extension;
-
-  const {
-    error
-  } =
-    await supabaseClient
-      .storage
-      .from("avatars")
-      .upload(
-        filePath,
-        file,
-        {
-          upsert:true,
-          contentType:file.type
-        }
-      );
-
-  if(error) throw error;
-
-  const {
-    data
-  } =
-    supabaseClient
-      .storage
-      .from("avatars")
-      .getPublicUrl(filePath);
-
-  return data.publicUrl;
-}
-
-
-async function saveProfile(){
-
-  if(!currentUser){
-    showAuth("login");
-    return;
-  }
-
-  const newUsername =
-    $("#profileUsername")
-      .value
-      .trim()
-      .slice(0,20);
-
-  const bio =
-    $("#profileBio")
-      .value
-      .trim()
-      .slice(0,120);
-
-  if(newUsername.length < 3){
-
-    $("#profileMessage").textContent =
-      "Username kam se kam 3 characters ka hona chahiye.";
-
-    return;
-  }
-
-  $("#profileMessage").textContent =
-    "Profile save ho rahi hai...";
-
-  try{
-
-    let avatarUrl =
-      $("#profileAvatar").dataset.url || "";
-
-    const file =
-      $("#avatarInput").files[0];
-
-    if(file){
-
-      $("#profileMessage").textContent =
-        "PFP upload ho rahi hai...";
-
-      avatarUrl =
-        await uploadAvatar(file);
-
-      $("#profileAvatar").dataset.url =
-        avatarUrl;
-    }
-
-    const {
-      error
-    } =
-      await supabaseClient
-        .from("profiles")
-        .update({
-          username:newUsername,
-          bio:bio,
-          avatar_url:avatarUrl || null
-        })
-        .eq("id",currentUser.id);
-
-    if(error){
-
-      if(error.code === "23505"){
-
-        throw new Error(
-          "Ye username already taken hai."
-        );
-
-      }
-
-      throw error;
-    }
-
-    username =
-      newUsername;
-
-    localStorage.setItem(
-      "vibechat_name",
-      username
-    );
-
-    $("#nameInput").value =
-      username;
-
-    $("#profileMessage").textContent =
-      "Profile saved successfully! 🎉";
-
-    await loadOnlineUsers();
-
-    setTimeout(
-      closeProfile,
-      700
-    );
-
-  }catch(error){
-
-    console.error(
-      "Profile save:",
-      error
-    );
-
-    $("#profileMessage").textContent =
-      error.message ||
-      "Profile save nahi hui.";
-
-  }
-}
+$("#profileBtn").onclick =
+  openProfile;
 
 
 $("#closeProfileBtn").onclick =
@@ -2630,56 +2371,70 @@ $("#saveProfileBtn").onclick =
 
 $("#avatarInput").addEventListener(
   "change",
-  event => {
+  () => {
 
     const file =
-      event.target.files[0];
+      $("#avatarInput").files[0];
 
-    if(!file) return;
 
-    if(!file.type.startsWith("image/")){
-      $("#profileMessage").textContent =
-        "Sirf image select karo.";
+    if(!file)
       return;
-    }
+
 
     const reader =
       new FileReader();
 
-    reader.onload =
-      () => {
 
-        $("#profileAvatar").src =
-          reader.result;
+    reader.onload = e => {
 
-      };
+      $("#profileAvatar").src =
+        e.target.result;
+
+    };
+
 
     reader.readAsDataURL(file);
 
   }
 );
 
-const profileBtn =
-  document.createElement("button");
 
-profileBtn.id =
-  "profileBtn";
+$("#themeBtn").onclick =
+  toggleTheme;
 
-profileBtn.className =
-  "iconbtn";
 
-profileBtn.textContent =
-  "👤";
+$("#backBtn").onclick =
+  async () => {
 
-profileBtn.title =
-  "My Profile";
+    clearHeartbeat();
 
-profileBtn.onclick =
-  openProfile;
+    await removeOwnOnlineUser();
 
-const topbarElement =
-  document.querySelector(".topbar");
+    removeChannels();
 
-if(topbarElement){
-  topbarElement.prepend(profileBtn);
-}
+    closePrivateChat();
+
+    $("#chat")
+      .classList.add("hidden");
+
+    $("#home")
+      .classList.remove("hidden");
+
+  };
+
+
+/* =========================
+   START
+========================= */
+
+(async function(){
+
+  renderRoom();
+
+  loadTheme();
+
+  await checkAuth();
+
+  updateLevel();
+
+})();
