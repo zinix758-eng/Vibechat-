@@ -1,9 +1,8 @@
 const $ = s => document.querySelector(s);
 
-
-/* =========================
-   SUPABASE
-========================= */
+/* =========================================================
+   ZUNO — SUPABASE
+========================================================= */
 
 const SUPABASE_URL =
   "https://uopwsaymtomnxfmacsnu.supabase.co";
@@ -18,9 +17,9 @@ const supabaseClient =
   );
 
 
-/* =========================
+/* =========================================================
    STATE
-========================= */
+========================================================= */
 
 let username =
   localStorage.getItem("zuno_name") ||
@@ -28,11 +27,9 @@ let username =
   "";
 
 let currentUser = null;
-
 let authMode = "login";
 
 let currentRoom = "Chill Zone";
-
 let privateUser = null;
 
 let realtimeChannel = null;
@@ -48,46 +45,57 @@ let displayedPrivateMessages = new Set();
 
 let onlineUserId = null;
 
+let currentProfile = {
+  username: "",
+  bio: "",
+  avatar: ""
+};
+
+let currentXP = 0;
+let currentLevel = 1;
+
+let currentFeedPosts = [];
+let currentCommunities = [];
+
+
+/* =========================================================
+   ROOMS
+========================================================= */
 
 const roomIcons = {
-  "Chill Zone":"🌙",
-  "Music Lounge":"🎵",
-  "Gaming":"🎮",
-  "Random":"💭"
+  "Chill Zone": "🌙",
+  "Music Lounge": "🎵",
+  "Gaming": "🎮",
+  "Random": "💭"
 };
-
 
 const defaultTopics = {
-  "Chill Zone":"Talk • Chill • Make new friends",
-  "Music Lounge":"Music • Songs • Vibes",
-  "Gaming":"Gaming • Fun • Squad",
-  "Random":"Random talks • Anything goes"
+  "Chill Zone": "Talk • Chill • Make new friends",
+  "Music Lounge": "Music • Songs • Vibes",
+  "Gaming": "Gaming • Fun • Squad",
+  "Random": "Random talks • Anything goes"
 };
 
 
-/* =========================
-   SAFE HTML
-========================= */
+/* =========================================================
+   HELPERS
+========================================================= */
 
-function escapeHtml(value){
+function escapeHtml(value) {
 
   return String(value ?? "")
     .replace(/[&<>"']/g, c => ({
-      "&":"&amp;",
-      "<":"&lt;",
-      ">":"&gt;",
-      '"':"&quot;",
-      "'":"&#039;"
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;",
+      "'": "&#039;"
     }[c]));
 
 }
 
 
-/* =========================
-   AVATAR
-========================= */
-
-function defaultAvatar(name){
+function defaultAvatar(name) {
 
   const letter =
     String(name || "?")
@@ -95,91 +103,144 @@ function defaultAvatar(name){
       .charAt(0)
       .toUpperCase() || "?";
 
-  return `https://ui-avatars.com/api/?name=${encodeURIComponent(letter)}&background=667eea&color=fff&size=200`;
+  return `https://ui-avatars.com/api/?name=${encodeURIComponent(
+    letter
+  )}&background=667eea&color=fff&size=200`;
+}
+
+
+function formatDate(date) {
+
+  if (!date) return "";
+
+  const d = new Date(date);
+
+  if (Number.isNaN(d.getTime()))
+    return "";
+
+  return d.toLocaleString([], {
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit"
+  });
+}
+
+
+function safeText(value, fallback = "") {
+
+  const text = String(value ?? "").trim();
+
+  return text || fallback;
+}
+
+
+function showElement(id) {
+
+  const el = $(id);
+
+  if (el)
+    el.classList.remove("hidden");
 
 }
 
 
-/* =========================
-   AUTH UI
-========================= */
+function hideElement(id) {
 
-function showAuth(mode="login"){
+  const el = $(id);
+
+  if (el)
+    el.classList.add("hidden");
+
+}
+
+
+/* =========================================================
+   AUTH UI
+========================================================= */
+
+function showAuth(mode = "login") {
 
   authMode = mode;
 
-  $("#authModal").classList.remove("hidden");
+  showElement("#authModal");
 
-  $("#authTitle").textContent =
-    mode === "login"
-      ? "Welcome Back"
-      : "Join ZUNO";
-
-  $("#authSubtitle").textContent =
-    mode === "login"
-      ? "Login to continue to ZUNO"
-      : "Create your ZUNO account";
-
-  $("#authSubmitBtn").textContent =
-    mode === "login"
-      ? "Login"
-      : "Create Account";
-
-  $("#authSwitchBtn").textContent =
-    mode === "login"
-      ? "Don't have an account? Sign up"
-      : "Already have an account? Login";
-
-  $("#authUsername")
-    .classList.toggle(
-      "hidden",
+  if ($("#authTitle"))
+    $("#authTitle").textContent =
       mode === "login"
-    );
+        ? "Welcome Back"
+        : "Join ZUNO";
 
-  $("#authMessage").textContent = "";
+  if ($("#authSubtitle"))
+    $("#authSubtitle").textContent =
+      mode === "login"
+        ? "Login to continue to ZUNO"
+        : "Create your ZUNO account";
+
+  if ($("#authSubmitBtn"))
+    $("#authSubmitBtn").textContent =
+      mode === "login"
+        ? "Login"
+        : "Create Account";
+
+  if ($("#authSwitchBtn"))
+    $("#authSwitchBtn").textContent =
+      mode === "login"
+        ? "Don't have an account? Sign up"
+        : "Already have an account? Login";
+
+  if ($("#authUsername"))
+    $("#authUsername")
+      .classList.toggle(
+        "hidden",
+        mode === "login"
+      );
+
+  if ($("#authMessage"))
+    $("#authMessage").textContent = "";
 
 }
 
 
-function closeAuth(){
+function closeAuth() {
 
-  $("#authModal").classList.add("hidden");
+  hideElement("#authModal");
 
 }
 
 
-function authMessage(text,error=false){
+function authMessage(text, error = false) {
 
   const el = $("#authMessage");
+
+  if (!el) return;
 
   el.textContent = text;
 
   el.style.color =
-    error ? "#ff7d8d" : "#8ea2ff";
-
+    error
+      ? "#ff7d8d"
+      : "#8ea2ff";
 }
 
 
-/* =========================
+/* =========================================================
    SIGNUP
-========================= */
+========================================================= */
 
-async function signup(){
+async function signup() {
 
   const email =
-    $("#authEmail").value.trim();
+    safeText($("#authEmail")?.value);
 
   const password =
-    $("#authPassword").value;
+    $("#authPassword")?.value || "";
 
   const newUsername =
-    $("#authUsername")
-      .value
-      .trim()
-      .slice(0,20);
+    safeText($("#authUsername")?.value)
+      .slice(0, 20);
 
-
-  if(!email || !password || !newUsername){
+  if (!email || !password || !newUsername) {
 
     authMessage(
       "Please fill all fields.",
@@ -189,8 +250,7 @@ async function signup(){
     return;
   }
 
-
-  if(password.length < 6){
+  if (password.length < 6) {
 
     authMessage(
       "Password must be at least 6 characters.",
@@ -200,8 +260,11 @@ async function signup(){
     return;
   }
 
-
-  if(!/^[a-zA-Z0-9_. -]+$/.test(newUsername)){
+  if (
+    !/^[a-zA-Z0-9_. -]+$/.test(
+      newUsername
+    )
+  ) {
 
     authMessage(
       "Username can contain letters, numbers, _ . - only.",
@@ -211,11 +274,9 @@ async function signup(){
     return;
   }
 
-
   authMessage("Creating account...");
 
-
-  try{
+  try {
 
     const {
       data,
@@ -226,11 +287,10 @@ async function signup(){
         password
       });
 
+    if (error)
+      throw error;
 
-    if(error) throw error;
-
-
-    if(!data.user){
+    if (!data.user) {
 
       authMessage(
         "Account created. Check your email to verify it."
@@ -239,21 +299,18 @@ async function signup(){
       return;
     }
 
-
     const {
-      error:profileError
+      error: profileError
     } =
       await supabaseClient
         .from("profiles")
         .upsert({
-          id:data.user.id,
-          username:newUsername
+          id: data.user.id,
+          username: newUsername
         });
 
-
-    if(profileError)
+    if (profileError)
       throw profileError;
-
 
     username = newUsername;
 
@@ -264,13 +321,17 @@ async function signup(){
 
     currentUser = data.user;
 
+    await createXPRow();
+
+    await loadProfile();
+
     closeAuth();
 
     updateUserUI();
 
-    enter(currentRoom);
+    await enter(currentRoom);
 
-  }catch(error){
+  } catch (error) {
 
     console.error(error);
 
@@ -284,20 +345,19 @@ async function signup(){
 }
 
 
-/* =========================
+/* =========================================================
    LOGIN
-========================= */
+========================================================= */
 
-async function login(){
+async function login() {
 
   const email =
-    $("#authEmail").value.trim();
+    safeText($("#authEmail")?.value);
 
   const password =
-    $("#authPassword").value;
+    $("#authPassword")?.value || "";
 
-
-  if(!email || !password){
+  if (!email || !password) {
 
     authMessage(
       "Enter email and password.",
@@ -307,11 +367,9 @@ async function login(){
     return;
   }
 
-
   authMessage("Logging in...");
 
-
-  try{
+  try {
 
     const {
       data,
@@ -323,19 +381,19 @@ async function login(){
           password
         });
 
-
-    if(error) throw error;
-
+    if (error)
+      throw error;
 
     currentUser = data.user;
 
     await loadProfile();
+    await loadXP();
 
     closeAuth();
 
     updateUserUI();
 
-  }catch(error){
+  } catch (error) {
 
     console.error(error);
 
@@ -349,14 +407,14 @@ async function login(){
 }
 
 
-/* =========================
+/* =========================================================
    PROFILE
-========================= */
+========================================================= */
 
-async function loadProfile(){
+async function loadProfile() {
 
-  if(!currentUser) return;
-
+  if (!currentUser)
+    return;
 
   const {
     data,
@@ -364,104 +422,135 @@ async function loadProfile(){
   } =
     await supabaseClient
       .from("profiles")
-      .select("username,bio,avatar_url")
-      .eq("id",currentUser.id)
+      .select(
+        "username,bio,avter_url"
+      )
+      .eq("id", currentUser.id)
       .maybeSingle();
 
+  if (error) {
 
-  if(error){
+    console.error(
+      "Profile load error:",
+      error
+    );
 
-    console.error(error);
     return;
   }
 
+  if (!data)
+    return;
 
-  if(data){
+  username =
+    data.username || username;
 
-    username =
-      data.username || username;
+  currentProfile = {
+    username,
+    bio: data.bio || "",
+    avatar:
+      data.avter_url ||
+      defaultAvatar(username)
+  };
 
-    localStorage.setItem(
-      "zuno_name",
-      username
-    );
+  localStorage.setItem(
+    "zuno_name",
+    username
+  );
 
+  if ($("#nameInput"))
     $("#nameInput").value =
       username;
 
+  if ($("#profileUsername"))
     $("#profileUsername").value =
       username;
 
+  if ($("#profileBio"))
     $("#profileBio").value =
       data.bio || "";
 
+  if ($("#profileAvatar"))
     $("#profileAvatar").src =
-      data.avatar_url ||
-      defaultAvatar(username);
+      currentProfile.avatar;
 
-  }
+  updateUserUI();
 
 }
 
 
-function updateUserUI(){
+function updateUserUI() {
 
-  if(!currentUser){
+  if (!currentUser) {
 
-    $("#profileBtn")
-      .classList.add("hidden");
-
-    $("#logoutBtn")
-      .classList.add("hidden");
+    hideElement("#profileBtn");
+    hideElement("#logoutBtn");
 
     return;
   }
 
+  showElement("#profileBtn");
+  showElement("#logoutBtn");
 
-  $("#profileBtn")
-    .classList.remove("hidden");
+  if ($("#nameInput"))
+    $("#nameInput").value =
+      username;
 
-  $("#logoutBtn")
-    .classList.remove("hidden");
-
-  $("#nameInput").value =
-    username;
-
-  $("#sideUsername").textContent =
-    username;
+  if ($("#sideUsername"))
+    $("#sideUsername").textContent =
+      username;
 
   loadSideAvatar();
 
 }
 
 
-async function loadSideAvatar(){
+async function loadSideAvatar() {
 
-  if(!currentUser) return;
-
+  if (!currentUser)
+    return;
 
   const {
-    data
+    data,
+    error
   } =
     await supabaseClient
       .from("profiles")
-      .select("avatar_url")
-      .eq("id",currentUser.id)
+      .select("avter_url")
+      .eq("id", currentUser.id)
       .maybeSingle();
 
+  if (error) {
+
+    console.error(error);
+
+    return;
+  }
 
   const avatar =
-    data?.avatar_url ||
+    data?.avter_url ||
     defaultAvatar(username);
 
+  currentProfile.avatar = avatar;
 
-  $("#sideAvatar").innerHTML =
-    `<img src="${avatar}" alt="">`;
+  if ($("#sideAvatar")) {
+
+    $("#sideAvatar").innerHTML = `
+      <img
+        src="${escapeHtml(avatar)}"
+        alt=""
+      >
+    `;
+
+  }
+
+  if ($("#profileAvatar"))
+    $("#profileAvatar").src =
+      avatar;
 
 }
 
 
-async function checkAuth(){
+async function checkAuth() {
 
   const {
     data
@@ -469,36 +558,34 @@ async function checkAuth(){
     await supabaseClient.auth
       .getSession();
 
-
-  if(data.session){
+  if (data.session) {
 
     currentUser =
       data.session.user;
 
     await loadProfile();
 
+    await loadXP();
+
     updateUserUI();
 
-  }else{
+  } else {
 
     currentUser = null;
 
-    $("#profileBtn")
-      .classList.add("hidden");
-
-    $("#logoutBtn")
-      .classList.add("hidden");
+    hideElement("#profileBtn");
+    hideElement("#logoutBtn");
 
   }
 
 }
 
 
-/* =========================
+/* =========================================================
    LOGOUT
-========================= */
+========================================================= */
 
-async function logout(){
+async function logout() {
 
   clearHeartbeat();
 
@@ -506,37 +593,45 @@ async function logout(){
 
   removeChannels();
 
-  await supabaseClient.auth.signOut();
+  try {
+    await supabaseClient.auth.signOut();
+  } catch (error) {
+    console.error(error);
+  }
 
   currentUser = null;
-
   privateUser = null;
-
   username = "";
 
-  localStorage.removeItem("zuno_name");
+  localStorage.removeItem(
+    "zuno_name"
+  );
 
-  $("#chat").classList.add("hidden");
-  $("#home").classList.remove("hidden");
+  hideElement("#chat");
+  hideElement("#feedScreen");
+  hideElement("#communitiesScreen");
+  hideElement("#peopleScreen");
 
-  $("#profileBtn")
-    .classList.add("hidden");
+  showElement("#home");
 
-  $("#logoutBtn")
-    .classList.add("hidden");
+  hideElement("#profileBtn");
+  hideElement("#logoutBtn");
 
 }
 
 
-/* =========================
+/* =========================================================
    ROOMS
-========================= */
+========================================================= */
 
-function renderRoom(){
+function renderRoom() {
 
-  $("#roomTitle").textContent =
-    `${roomIcons[currentRoom] || "💬"} ${currentRoom}`;
+  if ($("#roomTitle")) {
 
+    $("#roomTitle").textContent =
+      `${roomIcons[currentRoom] || "💬"} ${currentRoom}`;
+
+  }
 
   document
     .querySelectorAll(".room")
@@ -552,11 +647,14 @@ function renderRoom(){
 }
 
 
-async function loadRoomTopic(){
+async function loadRoomTopic() {
 
-  $("#roomTopic").textContent =
-    defaultTopics[currentRoom] || "";
+  if ($("#roomTopic")) {
 
+    $("#roomTopic").textContent =
+      defaultTopics[currentRoom] || "";
+
+  }
 
   const {
     data,
@@ -565,57 +663,55 @@ async function loadRoomTopic(){
     await supabaseClient
       .from("room_topics")
       .select("topic")
-      .eq("room",currentRoom)
+      .eq("room", currentRoom)
       .maybeSingle();
 
+  if (!error && data?.topic) {
 
-  if(!error && data?.topic){
-
-    $("#roomTopic").textContent =
-      data.topic;
+    if ($("#roomTopic"))
+      $("#roomTopic").textContent =
+        data.topic;
 
   }
 
 }
 
 
-function openTopicEditor(){
+function openTopicEditor() {
 
-  $("#topicRoomName").textContent =
-    currentRoom;
+  if ($("#topicRoomName"))
+    $("#topicRoomName").textContent =
+      currentRoom;
 
-  $("#topicInput").value =
-    $("#roomTopic").textContent;
+  if ($("#topicInput"))
+    $("#topicInput").value =
+      $("#roomTopic")?.textContent || "";
 
-  $("#topicModal")
-    .classList.remove("hidden");
-
-}
-
-
-function closeTopicEditor(){
-
-  $("#topicModal")
-    .classList.add("hidden");
+  showElement("#topicModal");
 
 }
 
 
-async function saveRoomTopic(){
+function closeTopicEditor() {
+
+  hideElement("#topicModal");
+
+}
+
+
+async function saveRoomTopic() {
 
   const topic =
-    $("#topicInput")
-      .value
-      .trim();
+    safeText($("#topicInput")?.value);
 
+  if (!topic) {
 
-  if(!topic){
-
-    alert("Topic cannot be empty.");
+    alert(
+      "Topic cannot be empty."
+    );
 
     return;
   }
-
 
   const {
     error
@@ -624,16 +720,15 @@ async function saveRoomTopic(){
       .from("room_topics")
       .upsert(
         {
-          room:currentRoom,
+          room: currentRoom,
           topic
         },
         {
-          onConflict:"room"
+          onConflict: "room"
         }
       );
 
-
-  if(error){
+  if (error) {
 
     alert(
       "Topic save error: " +
@@ -643,32 +738,32 @@ async function saveRoomTopic(){
     return;
   }
 
-
-  $("#roomTopic").textContent =
-    topic;
+  if ($("#roomTopic"))
+    $("#roomTopic").textContent =
+      topic;
 
   closeTopicEditor();
 
 }
 
 
-/* =========================
+/* =========================================================
    ONLINE USERS
-========================= */
+========================================================= */
 
-async function removeOwnOnlineUser(){
+async function removeOwnOnlineUser() {
 
-  if(!username) return;
+  if (!username)
+    return;
 
-
-  try{
+  try {
 
     await supabaseClient
       .from("online_users")
       .delete()
-      .eq("username",username);
+      .eq("username", username);
 
-  }catch(error){
+  } catch (error) {
 
     console.error(error);
 
@@ -677,13 +772,12 @@ async function removeOwnOnlineUser(){
 }
 
 
-async function joinOnlineUsers(){
+async function joinOnlineUsers() {
 
-  if(!username) return;
-
+  if (!username)
+    return;
 
   await removeOwnOnlineUser();
-
 
   const {
     data,
@@ -693,14 +787,13 @@ async function joinOnlineUsers(){
       .from("online_users")
       .insert({
         username,
-        room:currentRoom,
-        last_seen:Date.now()
+        room: currentRoom,
+        last_seen: Date.now()
       })
       .select()
       .maybeSingle();
 
-
-  if(error){
+  if (error) {
 
     console.error(
       "Online user error:",
@@ -710,21 +803,21 @@ async function joinOnlineUsers(){
     return;
   }
 
-
   onlineUserId =
     data?.id || null;
-
 
   await loadOnlineUsers();
 
 }
 
 
-async function loadOnlineUsers(){
+async function loadOnlineUsers() {
+
+  if (!currentRoom)
+    return;
 
   const cutoff =
     Date.now() - 45000;
-
 
   const {
     data,
@@ -732,60 +825,67 @@ async function loadOnlineUsers(){
   } =
     await supabaseClient
       .from("online_users")
-      .select("id,username,room,last_seen")
-      .eq("room",currentRoom)
-      .gt("last_seen",cutoff);
+      .select(
+        "id,username,room,last_seen"
+      )
+      .eq("room", currentRoom)
+      .gt("last_seen", cutoff);
 
+  if (error) {
 
-  if(error){
+    console.error(
+      "Online load error:",
+      error
+    );
 
-    console.error(error);
     return;
   }
 
-
   const {
-    data:profiles
+    data: profiles
   } =
     await supabaseClient
       .from("profiles")
-      .select("username,avatar_url");
-
+      .select(
+        "username,avter_url"
+      );
 
   const avatarMap = {};
 
   (profiles || []).forEach(profile => {
 
     avatarMap[profile.username] =
-      profile.avatar_url ||
-      defaultAvatar(profile.username);
+      profile.avter_url ||
+      defaultAvatar(
+        profile.username
+      );
 
   });
-
 
   const people =
     $("#people");
 
+  if (!people)
+    return;
 
   people.innerHTML =
-    `<h3>Online now</h3>`;
+    "<h3>Online now</h3>";
 
+  if ($("#onlineCount"))
+    $("#onlineCount").textContent =
+      data?.length || 0;
 
-  $("#onlineCount").textContent =
-    data?.length || 0;
+  if (!data?.length) {
 
-
-  if(!data?.length){
-
-    people.innerHTML +=
-      `<div class="empty-state">
+    people.innerHTML += `
+      <div class="empty-state">
         <span>👀</span>
         Nobody else is here.
-      </div>`;
+      </div>
+    `;
 
     return;
   }
-
 
   data.forEach(person => {
 
@@ -797,16 +897,16 @@ async function loadOnlineUsers(){
         ? "me"
         : "person";
 
-
     const avatar =
       avatarMap[person.username] ||
-      defaultAvatar(person.username);
-
+      defaultAvatar(
+        person.username
+      );
 
     div.innerHTML = `
       <img
         class="online-avatar"
-        src="${avatar}"
+        src="${escapeHtml(avatar)}"
         alt=""
       >
 
@@ -814,9 +914,11 @@ async function loadOnlineUsers(){
 
         <b>
           ${escapeHtml(person.username)}
-          ${person.username === username
-            ? " (you)"
-            : ""}
+          ${
+            person.username === username
+              ? " (you)"
+              : ""
+          }
         </b>
 
         <small>
@@ -827,10 +929,9 @@ async function loadOnlineUsers(){
       </div>
     `;
 
-
-    if(
+    if (
       person.username !== username
-    ){
+    ) {
 
       div.onclick = () =>
         openPrivateChat(
@@ -839,7 +940,6 @@ async function loadOnlineUsers(){
 
     }
 
-
     people.appendChild(div);
 
   });
@@ -847,36 +947,34 @@ async function loadOnlineUsers(){
 }
 
 
-function startHeartbeat(){
+function startHeartbeat() {
 
   clearHeartbeat();
-
 
   heartbeatTimer =
     setInterval(async () => {
 
-      if(!username) return;
-
+      if (!username)
+        return;
 
       await supabaseClient
         .from("online_users")
         .update({
-          last_seen:Date.now(),
-          room:currentRoom
+          last_seen: Date.now(),
+          room: currentRoom
         })
-        .eq("username",username);
+        .eq("username", username);
 
+      await loadOnlineUsers();
 
-      loadOnlineUsers();
-
-    },15000);
+    }, 15000);
 
 }
 
 
-function clearHeartbeat(){
+function clearHeartbeat() {
 
-  if(heartbeatTimer){
+  if (heartbeatTimer) {
 
     clearInterval(
       heartbeatTimer
@@ -889,9 +987,9 @@ function clearHeartbeat(){
 }
 
 
-function setupOnlineRealtime(){
+function setupOnlineRealtime() {
 
-  if(onlineChannel){
+  if (onlineChannel) {
 
     supabaseClient
       .removeChannel(
@@ -899,7 +997,6 @@ function setupOnlineRealtime(){
       );
 
   }
-
 
   onlineChannel =
     supabaseClient
@@ -910,49 +1007,47 @@ function setupOnlineRealtime(){
       .on(
         "postgres_changes",
         {
-          event:"*",
-          schema:"public",
-          table:"online_users"
+          event: "*",
+          schema: "public",
+          table: "online_users"
         },
-        () => loadOnlineUsers()
+        () => {
+
+          loadOnlineUsers();
+
+        }
       )
       .subscribe();
 
 }
 
 
-/* =========================
-   ENTER ROOM
-========================= */
+/* =========================================================
+   ENTER CHAT
+========================================================= */
 
 async function enter(
-  room=currentRoom
-){
+  room = currentRoom
+) {
 
-  if(!currentUser){
+  if (!currentUser) {
 
     showAuth("login");
 
     return;
   }
 
-
-  if(!username){
-
+  if (!username)
     await loadProfile();
-
-  }
-
 
   currentRoom = room;
 
+  hideElement("#home");
+  hideElement("#feedScreen");
+  hideElement("#communitiesScreen");
+  hideElement("#peopleScreen");
 
-  $("#home")
-    .classList.add("hidden");
-
-  $("#chat")
-    .classList.remove("hidden");
-
+  showElement("#chat");
 
   renderRoom();
 
@@ -973,40 +1068,42 @@ async function enter(
 }
 
 
-/* =========================
+/* =========================================================
    PUBLIC MESSAGES
-========================= */
+========================================================= */
 
-async function renderMessages(){
+async function renderMessages() {
 
   const box =
     $("#messages");
 
+  if (!box)
+    return;
 
   box.innerHTML = "";
 
   displayedMessages.clear();
 
-
   const {
-    data:profiles
+    data: profiles
   } =
     await supabaseClient
       .from("profiles")
-      .select("username,avatar_url");
-
+      .select(
+        "username,avter_url"
+      );
 
   const avatarMap = {};
-
 
   (profiles || []).forEach(profile => {
 
     avatarMap[profile.username] =
-      profile.avatar_url ||
-      defaultAvatar(profile.username);
+      profile.avter_url ||
+      defaultAvatar(
+        profile.username
+      );
 
   });
-
 
   const {
     data,
@@ -1015,13 +1112,15 @@ async function renderMessages(){
     await supabaseClient
       .from("messages")
       .select("*")
-      .eq("room",currentRoom)
-      .order("created_at",{
-        ascending:true
-      });
+      .eq("room", currentRoom)
+      .order(
+        "created_at",
+        {
+          ascending: true
+        }
+      );
 
-
-  if(error){
+  if (error) {
 
     console.error(
       "Messages error:",
@@ -1031,18 +1130,17 @@ async function renderMessages(){
     return;
   }
 
+  if (!data?.length) {
 
-  if(!data?.length){
-
-    box.innerHTML =
-      `<div class="empty-state">
+    box.innerHTML = `
+      <div class="empty-state">
         <span>💬</span>
         Be the first to say something.
-      </div>`;
+      </div>
+    `;
 
     return;
   }
-
 
   data.forEach(message => {
 
@@ -1054,12 +1152,13 @@ async function renderMessages(){
         ...message,
         avatar_url:
           avatarMap[message.name] ||
-          defaultAvatar(message.name)
+          defaultAvatar(
+            message.name
+          )
       }
     );
 
   });
-
 
   box.scrollTop =
     box.scrollHeight;
@@ -1070,55 +1169,51 @@ async function renderMessages(){
 function addMsg(
   name,
   text,
-  mine=false,
-  message=null
-){
+  mine = false,
+  message = null
+) {
 
   const key =
     message
       ? `${message.room}|${message.name}|${message.text}|${message.created_at}`
       : `${name}|${text}`;
 
-
-  if(displayedMessages.has(key))
+  if (displayedMessages.has(key))
     return;
 
-
   displayedMessages.add(key);
-
 
   const box =
     $("#messages");
 
+  if (!box)
+    return;
 
   const empty =
-    box.querySelector(".empty-state");
+    box.querySelector(
+      ".empty-state"
+    );
 
-  if(empty)
+  if (empty)
     empty.remove();
-
 
   const div =
     document.createElement("div");
-
 
   div.className =
     "msg" +
     (mine ? " mine" : "");
 
-
   const avatar =
     message?.avatar_url ||
     defaultAvatar(name);
 
-
   div.innerHTML = `
-
     <div class="msg-user">
 
       <img
         class="msg-avatar"
-        src="${avatar}"
+        src="${escapeHtml(avatar)}"
         alt=""
       >
 
@@ -1131,40 +1226,37 @@ function addMsg(
     <div class="bubble">
       ${escapeHtml(text)}
     </div>
-
   `;
-
 
   box.appendChild(div);
 
 }
 
 
-async function send(){
+async function send() {
 
-  if(privateUser){
+  if (privateUser) {
 
     await sendPrivate();
 
     return;
   }
 
-
   const input =
     $("#messageInput");
+
+  if (!input)
+    return;
 
   const text =
     input.value.trim();
 
-
-  if(!text || !username)
+  if (!text || !username)
     return;
-
 
   input.disabled = true;
 
-
-  try{
+  try {
 
     const {
       data,
@@ -1173,28 +1265,25 @@ async function send(){
       await supabaseClient
         .from("messages")
         .insert({
-          room:currentRoom,
-          name:username,
+          room: currentRoom,
+          name: username,
           text,
-          created_at:Date.now()
+          created_at: Date.now()
         })
         .select()
         .single();
 
-
-    if(error)
+    if (error)
       throw error;
 
-
     const {
-      data:profile
+      data: profile
     } =
       await supabaseClient
         .from("profiles")
-        .select("avatar_url")
-        .eq("username",username)
+        .select("avter_url")
+        .eq("username", username)
         .maybeSingle();
-
 
     addMsg(
       username,
@@ -1203,21 +1292,23 @@ async function send(){
       {
         ...data,
         avatar_url:
-          profile?.avatar_url ||
+          profile?.avter_url ||
           defaultAvatar(username)
       }
     );
 
-
     input.value = "";
 
-    addXP(2);
+    await addXP(2);
 
+    const messages =
+      $("#messages");
 
-    $("#messages").scrollTop =
-      $("#messages").scrollHeight;
+    if (messages)
+      messages.scrollTop =
+        messages.scrollHeight;
 
-  }catch(error){
+  } catch (error) {
 
     console.error(error);
 
@@ -1226,7 +1317,7 @@ async function send(){
       error.message
     );
 
-  }finally{
+  } finally {
 
     input.disabled = false;
     input.focus();
@@ -1236,13 +1327,13 @@ async function send(){
 }
 
 
-/* =========================
-   REALTIME PUBLIC
-========================= */
+/* =========================================================
+   PUBLIC REALTIME
+========================================================= */
 
-function setupRealtime(){
+function setupRealtime() {
 
-  if(realtimeChannel){
+  if (realtimeChannel) {
 
     supabaseClient
       .removeChannel(
@@ -1250,7 +1341,6 @@ function setupRealtime(){
       );
 
   }
-
 
   realtimeChannel =
     supabaseClient
@@ -1261,9 +1351,9 @@ function setupRealtime(){
       .on(
         "postgres_changes",
         {
-          event:"INSERT",
-          schema:"public",
-          table:"messages",
+          event: "INSERT",
+          schema: "public",
+          table: "messages",
           filter:
             `room=eq.${currentRoom}`
         },
@@ -1272,25 +1362,22 @@ function setupRealtime(){
           const message =
             payload.new;
 
-
-          if(
+          if (
             message.name === username
           )
             return;
 
-
           const {
-            data:profile
+            data: profile
           } =
             await supabaseClient
               .from("profiles")
-              .select("avatar_url")
+              .select("avter_url")
               .eq(
                 "username",
                 message.name
               )
               .maybeSingle();
-
 
           addMsg(
             message.name,
@@ -1299,16 +1386,19 @@ function setupRealtime(){
             {
               ...message,
               avatar_url:
-                profile?.avatar_url ||
+                profile?.avter_url ||
                 defaultAvatar(
                   message.name
                 )
             }
           );
 
+          const messages =
+            $("#messages");
 
-          $("#messages").scrollTop =
-            $("#messages").scrollHeight;
+          if (messages)
+            messages.scrollTop =
+              messages.scrollHeight;
 
         }
       )
@@ -1317,13 +1407,13 @@ function setupRealtime(){
 }
 
 
-/* =========================
+/* =========================================================
    TYPING
-========================= */
+========================================================= */
 
-function setupTyping(){
+function setupTyping() {
 
-  if(typingChannel){
+  if (typingChannel) {
 
     supabaseClient
       .removeChannel(
@@ -1332,7 +1422,6 @@ function setupTyping(){
 
   }
 
-
   typingChannel =
     supabaseClient
       .channel(
@@ -1340,37 +1429,37 @@ function setupTyping(){
         currentRoom
       );
 
-
   typingChannel
     .on(
       "broadcast",
       {
-        event:"typing"
+        event: "typing"
       },
       payload => {
 
-        if(
+        if (
           payload.payload.username ===
           username
         )
           return;
 
+        if ($("#typingIndicator"))
+          $("#typingIndicator")
+            .textContent =
+              `${payload.payload.username} is typing...`;
 
-        $("#typingIndicator")
-          .textContent =
-            `${payload.payload.username} is typing...`;
-
-
-        clearTimeout(typingTimer);
-
+        clearTimeout(
+          typingTimer
+        );
 
         typingTimer =
           setTimeout(() => {
 
-            $("#typingIndicator")
-              .textContent = "";
+            if ($("#typingIndicator"))
+              $("#typingIndicator")
+                .textContent = "";
 
-          },1500);
+          }, 1500);
 
       }
     )
@@ -1379,20 +1468,19 @@ function setupTyping(){
 }
 
 
-async function broadcastTyping(){
+async function broadcastTyping() {
 
-  if(
+  if (
     !typingChannel ||
     !username ||
     privateUser
   )
     return;
 
-
   await typingChannel.send({
-    type:"broadcast",
-    event:"typing",
-    payload:{
+    type: "broadcast",
+    event: "typing",
+    payload: {
       username
     }
   });
@@ -1400,35 +1488,32 @@ async function broadcastTyping(){
 }
 
 
-/* =========================
+/* =========================================================
    PRIVATE CHAT
-========================= */
+========================================================= */
 
-async function openPrivateChat(user){
+async function openPrivateChat(user) {
 
-  if(!user || user === username)
+  if (!user || user === username)
     return;
-
 
   privateUser = user;
 
+  hideElement("#publicChat");
+  showElement("#privateChat");
 
-  $("#publicChat")
-    .classList.add("hidden");
+  if ($("#people"))
+    $("#people")
+      .classList.remove("show");
 
-  $("#privateChat")
-    .classList.remove("hidden");
+  if ($("#privateUserName"))
+    $("#privateUserName")
+      .textContent = user;
 
-  $("#people")
-    .classList.remove("show");
-
-  $("#privateUserName")
-    .textContent = user;
-
-  $("#messageInput")
-    .placeholder =
-      `Message ${user}...`;
-
+  if ($("#messageInput"))
+    $("#messageInput")
+      .placeholder =
+        `Message ${user}...`;
 
   await renderPrivateMessages();
 
@@ -1437,16 +1522,17 @@ async function openPrivateChat(user){
 }
 
 
-async function renderPrivateMessages(){
+async function renderPrivateMessages() {
 
   const box =
     $("#privateMessages");
 
+  if (!box)
+    return;
 
   box.innerHTML = "";
 
   displayedPrivateMessages.clear();
-
 
   const {
     data,
@@ -1458,27 +1544,27 @@ async function renderPrivateMessages(){
       .or(
         `and(sender.eq.${username},receiver.eq.${privateUser}),and(sender.eq.${privateUser},receiver.eq.${username})`
       )
-      .order("created_at",{
-        ascending:true
-      });
+      .order(
+        "created_at",
+        {
+          ascending: true
+        }
+      );
 
+  if (error) {
 
-  if(error){
-
-    console.error(error);
+    console.error(
+      "Private messages error:",
+      error
+    );
 
     return;
   }
 
-
-  data?.forEach(message => {
-
-    addPrivateMsg(
-      message
-    );
-
-  });
-
+  (data || []).forEach(
+    message =>
+      addPrivateMsg(message)
+  );
 
   box.scrollTop =
     box.scrollHeight;
@@ -1486,50 +1572,51 @@ async function renderPrivateMessages(){
 }
 
 
-function addPrivateMsg(message){
+function addPrivateMsg(message) {
 
   const key =
     `${message.sender}|${message.receiver}|${message.text}|${message.created_at}`;
 
-
-  if(
+  if (
     displayedPrivateMessages.has(key)
   )
     return;
 
-
   displayedPrivateMessages.add(key);
-
 
   const box =
     $("#privateMessages");
 
+  if (!box)
+    return;
 
   const div =
     document.createElement("div");
 
-
   const mine =
     message.sender === username;
-
 
   div.className =
     "msg" +
     (mine ? " mine" : "");
 
-
   div.innerHTML = `
-
     <div class="msg-user">
 
       <img
         class="msg-avatar"
-        src="${defaultAvatar(message.sender)}"
+        src="${escapeHtml(
+          defaultAvatar(
+            message.sender
+          )
+        )}"
         alt=""
       >
 
       <div class="meta">
-        ${escapeHtml(message.sender)}
+        ${escapeHtml(
+          message.sender
+        )}
       </div>
 
     </div>
@@ -1537,33 +1624,31 @@ function addPrivateMsg(message){
     <div class="bubble">
       ${escapeHtml(message.text)}
     </div>
-
   `;
-
 
   box.appendChild(div);
 
 }
 
 
-async function sendPrivate(){
+async function sendPrivate() {
 
-  if(!privateUser)
+  if (!privateUser)
     return;
-
 
   const input =
     $("#messageInput");
 
+  if (!input)
+    return;
+
   const text =
     input.value.trim();
 
-
-  if(!text)
+  if (!text)
     return;
 
-
-  try{
+  try {
 
     const {
       data,
@@ -1572,30 +1657,31 @@ async function sendPrivate(){
       await supabaseClient
         .from("private_messages")
         .insert({
-          sender:username,
-          receiver:privateUser,
+          sender: username,
+          receiver: privateUser,
           text,
-          created_at:Date.now()
+          created_at: Date.now()
         })
         .select()
         .single();
 
-
-    if(error)
+    if (error)
       throw error;
-
 
     addPrivateMsg(data);
 
     input.value = "";
 
-    addXP(3);
+    await addXP(3);
 
+    const box =
+      $("#privateMessages");
 
-    $("#privateMessages").scrollTop =
-      $("#privateMessages").scrollHeight;
+    if (box)
+      box.scrollTop =
+        box.scrollHeight;
 
-  }catch(error){
+  } catch (error) {
 
     console.error(error);
 
@@ -1609,9 +1695,9 @@ async function sendPrivate(){
 }
 
 
-function setupPrivateRealtime(){
+function setupPrivateRealtime() {
 
-  if(privateChannel){
+  if (privateChannel) {
 
     supabaseClient
       .removeChannel(
@@ -1619,7 +1705,6 @@ function setupPrivateRealtime(){
       );
 
   }
-
 
   privateChannel =
     supabaseClient
@@ -1630,49 +1715,41 @@ function setupPrivateRealtime(){
       .on(
         "postgres_changes",
         {
-          event:"INSERT",
-          schema:"public",
-          table:"private_messages"
+          event: "INSERT",
+          schema: "public",
+          table: "private_messages"
         },
         payload => {
 
           const message =
             payload.new;
 
-
           const valid =
             (
-              message.sender ===
-              username &&
-              message.receiver ===
-              privateUser
+              message.sender === username &&
+              message.receiver === privateUser
             ) ||
             (
-              message.sender ===
-              privateUser &&
-              message.receiver ===
-              username
+              message.sender === privateUser &&
+              message.receiver === username
             );
 
-
-          if(!valid)
+          if (!valid)
             return;
 
-
-          if(
-            message.sender ===
-            username
+          if (
+            message.sender === username
           )
             return;
 
-
           addPrivateMsg(message);
 
+          const box =
+            $("#privateMessages");
 
-          $("#privateMessages")
-            .scrollTop =
-              $("#privateMessages")
-                .scrollHeight;
+          if (box)
+            box.scrollTop =
+              box.scrollHeight;
 
         }
       )
@@ -1681,23 +1758,23 @@ function setupPrivateRealtime(){
 }
 
 
-function closePrivateChat(){
+/* =========================================================
+   CLOSE PRIVATE CHAT
+========================================================= */
+
+function closePrivateChat() {
 
   privateUser = null;
 
+  hideElement("#privateChat");
+  showElement("#publicChat");
 
-  $("#privateChat")
-    .classList.add("hidden");
+  if ($("#messageInput"))
+    $("#messageInput")
+      .placeholder =
+        "Write something...";
 
-  $("#publicChat")
-    .classList.remove("hidden");
-
-  $("#messageInput")
-    .placeholder =
-      "Write something...";
-
-
-  if(privateChannel){
+  if (privateChannel) {
 
     supabaseClient
       .removeChannel(
@@ -1711,73 +1788,144 @@ function closePrivateChat(){
 }
 
 
-/* =========================
-   XP SYSTEM
-========================= */
+/* =========================================================
+   XP + LEVEL
+========================================================= */
 
-function getXP(){
-
-  if(!currentUser)
-    return 0;
-
-
-  return Number(
-    localStorage.getItem(
-      "zuno_xp_" +
-      currentUser.id
-    ) || 0
-  );
-
-}
-
-
-function getLevel(xp){
+function getLevel(xp) {
 
   return Math.floor(
-    xp / 100
+    Number(xp || 0) / 100
   ) + 1;
 
 }
 
 
-function addXP(amount){
+async function createXPRow() {
 
-  if(!currentUser)
+  if (!currentUser)
     return;
 
+  const {
+    error
+  } =
+    await supabaseClient
+      .from("user_xp")
+      .upsert({
+        user_id: currentUser.id,
+        xp: 0,
+        level: 1
+      });
+
+  if (error)
+    console.error(
+      "XP row error:",
+      error
+    );
+
+}
+
+
+async function loadXP() {
+
+  if (!currentUser)
+    return;
+
+  const {
+    data,
+    error
+  } =
+    await supabaseClient
+      .from("user_xp")
+      .select("xp,level")
+      .eq(
+        "user_id",
+        currentUser.id
+      )
+      .maybeSingle();
+
+  if (error) {
+
+    console.error(
+      "XP load error:",
+      error
+    );
+
+    return;
+  }
+
+  if (!data) {
+
+    await createXPRow();
+
+    currentXP = 0;
+    currentLevel = 1;
+
+  } else {
+
+    currentXP =
+      Number(data.xp || 0);
+
+    currentLevel =
+      Number(data.level || 1);
+
+  }
+
+  updateLevel();
+
+}
+
+
+async function addXP(amount) {
+
+  if (!currentUser)
+    return;
 
   const oldXP =
-    getXP();
-
-  const newXP =
-    oldXP + amount;
-
-
-  localStorage.setItem(
-    "zuno_xp_" +
-    currentUser.id,
-    newXP
-  );
-
+    currentXP;
 
   const oldLevel =
     getLevel(oldXP);
 
+  const newXP =
+    oldXP + Number(amount || 0);
+
   const newLevel =
     getLevel(newXP);
 
+  const {
+    error
+  } =
+    await supabaseClient
+      .from("user_xp")
+      .upsert({
+        user_id: currentUser.id,
+        xp: newXP,
+        level: newLevel,
+        updated_at:
+          new Date().toISOString()
+      });
+
+  if (error) {
+
+    console.error(
+      "XP update error:",
+      error
+    );
+
+    return;
+  }
+
+  currentXP = newXP;
+  currentLevel = newLevel;
 
   showXP(
     `⭐ +${amount} XP`
   );
 
+  updateLevel();
 
-  $("#sideLevel")
-    .textContent =
-      `Level ${newLevel}`;
-
-
-  if(newLevel > oldLevel){
+  if (newLevel > oldLevel) {
 
     setTimeout(() => {
 
@@ -1785,42 +1933,46 @@ function addXP(amount){
         `🎉 Level Up!\n\nYou reached Level ${newLevel}!`
       );
 
-    },200);
+    }, 250);
+
+    await checkLevelBadge(
+      newLevel
+    );
 
   }
 
 }
 
 
-function updateLevel(){
+function updateLevel() {
 
   const level =
-    getLevel(
-      getXP()
-    );
+    getLevel(currentXP);
 
+  currentLevel =
+    level;
 
-  $("#sideLevel")
-    .textContent =
+  if ($("#sideLevel"))
+    $("#sideLevel").textContent =
       `Level ${level}`;
 
 }
 
 
-function showXP(text){
+function showXP(text) {
 
   const toast =
     $("#xpToast");
 
+  if (!toast)
+    return;
 
   toast.textContent =
     text;
 
-
   toast.classList.remove(
     "hidden"
   );
-
 
   setTimeout(() => {
 
@@ -1828,56 +1980,84 @@ function showXP(text){
       "hidden"
     );
 
-  },1200);
+  }, 1200);
 
 }
 
 
-/* =========================
+async function checkLevelBadge(level) {
+
+  if (!currentUser)
+    return;
+
+  if (level < 10)
+    return;
+
+  const {
+    data: badge
+  } =
+    await supabaseClient
+      .from("badges")
+      .select("id")
+      .eq("name", "Legend")
+      .maybeSingle();
+
+  if (!badge)
+    return;
+
+  await supabaseClient
+    .from("user_badges")
+    .upsert({
+      user_id: currentUser.id,
+      badge_id: badge.id
+    });
+
+}
+
+
+/* =========================================================
    PROFILE MODAL
-========================= */
+========================================================= */
 
-async function openProfile(){
+async function openProfile() {
 
-  if(!currentUser){
+  if (!currentUser) {
 
     showAuth("login");
 
     return;
   }
 
-
   await loadProfile();
 
-
-  $("#profileModal")
-    .classList.remove("hidden");
+  showElement("#profileModal");
 
 }
 
 
-function closeProfile(){
+function closeProfile() {
 
-  $("#profileModal")
-    .classList.add("hidden");
+  hideElement("#profileModal");
 
-  $("#profileMessage")
-    .textContent = "";
+  if ($("#profileMessage"))
+    $("#profileMessage")
+      .textContent = "";
 
 }
 
 
-async function uploadAvatar(){
+async function uploadAvatar() {
 
   const file =
-    $("#avatarInput").files[0];
+    $("#avatarInput")?.files?.[0];
 
-
-  if(!file)
+  if (!file)
     return null;
 
-
-  if(file.size > 5 * 1024 * 1024){
+  if (
+    file.size >
+    5 * 1024 * 1024
+  ) {
 
     throw new Error(
       "Image must be under 5MB."
@@ -1885,17 +2065,14 @@ async function uploadAvatar(){
 
   }
 
-
   const extension =
     file.name
       .split(".")
       .pop()
       .toLowerCase();
 
-
   const path =
     `${currentUser.id}/avatar.${extension}`;
-
 
   const {
     error
@@ -1906,15 +2083,13 @@ async function uploadAvatar(){
         path,
         file,
         {
-          upsert:true,
-          contentType:file.type
+          upsert: true,
+          contentType: file.type
         }
       );
 
-
-  if(error)
+  if (error)
     throw error;
-
 
   const {
     data
@@ -1923,88 +2098,82 @@ async function uploadAvatar(){
       .from("avatars")
       .getPublicUrl(path);
 
-
-  return data.publicUrl +
+  return (
+    data.publicUrl +
     "?t=" +
-    Date.now();
+    Date.now()
+  );
 
 }
 
 
-async function saveProfile(){
+async function saveProfile() {
 
-  if(!currentUser)
+  if (!currentUser)
     return;
 
-
   const newName =
-    $("#profileUsername")
-      .value
-      .trim()
-      .slice(0,20);
-
+    safeText(
+      $("#profileUsername")?.value
+    )
+      .slice(0, 20);
 
   const bio =
-    $("#profileBio")
-      .value
-      .trim()
-      .slice(0,120);
+    safeText(
+      $("#profileBio")?.value
+    )
+      .slice(0, 120);
 
+  if (newName.length < 3) {
 
-  if(newName.length < 3){
-
-    $("#profileMessage")
-      .textContent =
-        "Username must be at least 3 characters.";
+    if ($("#profileMessage"))
+      $("#profileMessage")
+        .textContent =
+          "Username must be at least 3 characters.";
 
     return;
   }
 
-
-  if(
+  if (
     !/^[a-zA-Z0-9_. -]+$/.test(
       newName
     )
-  ){
+  ) {
 
-    $("#profileMessage")
-      .textContent =
-        "Username contains invalid characters.";
+    if ($("#profileMessage"))
+      $("#profileMessage")
+        .textContent =
+          "Username contains invalid characters.";
 
     return;
   }
 
+  if ($("#profileMessage"))
+    $("#profileMessage")
+      .textContent =
+        "Saving...";
 
-  $("#profileMessage")
-    .textContent =
-      "Saving...";
-
-
-  try{
+  try {
 
     let avatarUrl = null;
 
-
-    if(
-      $("#avatarInput").files.length
-    ){
+    if (
+      $("#avatarInput")?.files?.length
+    ) {
 
       avatarUrl =
         await uploadAvatar();
 
     }
 
-
     const updateData = {
-      username:newName,
+      username: newName,
       bio
     };
 
-
-    if(avatarUrl)
-      updateData.avatar_url =
+    if (avatarUrl)
+      updateData.avter_url =
         avatarUrl;
-
 
     const {
       error
@@ -2012,29 +2181,21 @@ async function saveProfile(){
       await supabaseClient
         .from("profiles")
         .update(updateData)
-        .eq("id",currentUser.id);
+        .eq(
+          "id",
+          currentUser.id
+        );
 
-
-    if(error)
+    if (error)
       throw error;
 
-
-    username = newName;
-
+    username =
+      newName;
 
     localStorage.setItem(
       "zuno_name",
       username
     );
-
-
-    $("#nameInput").value =
-      username;
-
-    $("#sideUsername")
-      .textContent =
-        username;
-
 
     await loadProfile();
 
@@ -2042,37 +2203,1558 @@ async function saveProfile(){
 
     await loadOnlineUsers();
 
-
-    $("#profileMessage")
-      .textContent =
-        "✓ Profile updated!";
-
+    if ($("#profileMessage"))
+      $("#profileMessage")
+        .textContent =
+          "✓ Profile updated!";
 
     setTimeout(
       closeProfile,
       700
     );
 
-
-  }catch(error){
+  } catch (error) {
 
     console.error(error);
 
-    $("#profileMessage")
-      .textContent =
-        error.message ||
-        "Profile update failed.";
+    if ($("#profileMessage"))
+      $("#profileMessage")
+        .textContent =
+          error.message ||
+          "Profile update failed.";
+
+  }
+
+           }
+
+/* =========================================================
+   FEED
+========================================================= */
+
+function openFeed() {
+
+  if (!currentUser) {
+
+    showAuth("login");
+
+    return;
+  }
+
+  hideElement("#home");
+  hideElement("#chat");
+  hideElement("#communitiesScreen");
+  hideElement("#peopleScreen");
+
+  showElement("#feedScreen");
+
+  loadFeed();
+
+}
+
+
+async function loadFeed() {
+
+  const feed =
+    $("#postFeed");
+
+  if (!feed)
+    return;
+
+  feed.innerHTML = `
+    <div class="empty-state">
+      <span>⏳</span>
+      Loading ZUNO Feed...
+    </div>
+  `;
+
+  const {
+    data: posts,
+    error
+  } =
+    await supabaseClient
+      .from("posts")
+      .select("*")
+      .order(
+        "created_at",
+        {
+          ascending: false
+        }
+      )
+      .limit(50);
+
+  if (error) {
+
+    console.error(
+      "Feed error:",
+      error
+    );
+
+    feed.innerHTML = `
+      <div class="empty-state">
+        <span>⚠️</span>
+        Unable to load feed.
+      </div>
+    `;
+
+    return;
+  }
+
+  if (!posts?.length) {
+
+    feed.innerHTML = `
+      <div class="empty-state">
+        <span>✨</span>
+        No posts yet. Be the first creator!
+      </div>
+    `;
+
+    return;
+  }
+
+  currentFeedPosts =
+    posts;
+
+  const userIds =
+    [...new Set(
+      posts.map(
+        post => post.user_id
+      )
+    )];
+
+  const {
+    data: profiles
+  } =
+    await supabaseClient
+      .from("profiles")
+      .select(
+        "id,username,avter_url,bio"
+      )
+      .in(
+        "id",
+        userIds
+      );
+
+  const profileMap = {};
+
+  (profiles || []).forEach(profile => {
+
+    profileMap[profile.id] =
+      profile;
+
+  });
+
+  const postIds =
+    posts.map(
+      post => post.id
+    );
+
+  const {
+    data: likes
+  } =
+    await supabaseClient
+      .from("post_likes")
+      .select(
+        "post_id,user_id"
+      )
+      .in(
+        "post_id",
+        postIds
+      );
+
+  const {
+    data: comments
+  } =
+    await supabaseClient
+      .from("comments")
+      .select(
+        "id,post_id,user_id,content,created_at"
+      )
+      .in(
+        "post_id",
+        postIds
+      )
+      .order(
+        "created_at",
+        {
+          ascending: true
+        }
+      );
+
+  const likeMap = {};
+  const commentMap = {};
+
+  (likes || []).forEach(like => {
+
+    if (!likeMap[like.post_id])
+      likeMap[like.post_id] = [];
+
+    likeMap[like.post_id].push(
+      like
+    );
+
+  });
+
+  (comments || []).forEach(comment => {
+
+    if (!commentMap[comment.post_id])
+      commentMap[comment.post_id] = [];
+
+    commentMap[comment.post_id].push(
+      comment
+    );
+
+  });
+
+  feed.innerHTML = "";
+
+  posts.forEach(post => {
+
+    renderPost(
+      post,
+      profileMap[post.user_id],
+      likeMap[post.id] || [],
+      commentMap[post.id] || []
+    );
+
+  });
+
+}
+
+
+function renderPost(
+  post,
+  profile,
+  likes,
+  comments
+) {
+
+  const feed =
+    $("#postFeed");
+
+  if (!feed)
+    return;
+
+  const div =
+    document.createElement("article");
+
+  div.className =
+    "zuno-post";
+
+  const avatar =
+    profile?.avter_url ||
+    defaultAvatar(
+      profile?.username ||
+      "ZUNO"
+    );
+
+  const liked =
+    likes.some(
+      like =>
+        like.user_id ===
+        currentUser?.id
+    );
+
+  const author =
+    profile?.username ||
+    "ZUNO User";
+
+  let commentsHtml = "";
+
+  comments.slice(-3).forEach(comment => {
+
+    commentsHtml += `
+      <div class="post-comment">
+        <b>
+          ${escapeHtml(
+            comment.user_id ===
+            currentUser?.id
+              ? username
+              : "User"
+          )}
+        </b>
+        ${escapeHtml(
+          comment.content
+        )}
+      </div>
+    `;
+
+  });
+
+  div.innerHTML = `
+    <div class="post-header">
+
+      <img
+        class="msg-avatar"
+        src="${escapeHtml(avatar)}"
+        alt=""
+      >
+
+      <div>
+        <b>
+          ${escapeHtml(author)}
+        </b>
+
+        <small>
+          ${formatDate(post.created_at)}
+        </small>
+      </div>
+
+    </div>
+
+    <div class="post-content">
+      ${escapeHtml(post.content)}
+    </div>
+
+    <div class="post-actions">
+
+      <button
+        class="post-like-btn"
+        data-id="${post.id}"
+      >
+        ${liked ? "❤️" : "🤍"}
+        ${likes.length}
+      </button>
+
+      <button
+        class="post-comment-btn"
+        data-id="${post.id}"
+      >
+        💬 ${comments.length}
+      </button>
+
+      <button
+        class="post-share-btn"
+        data-id="${post.id}"
+      >
+        ↗️ Share
+      </button>
+
+    </div>
+
+    <div class="post-comments">
+      ${commentsHtml}
+    </div>
+  `;
+
+  const likeBtn =
+    div.querySelector(
+      ".post-like-btn"
+    );
+
+  if (likeBtn) {
+
+    likeBtn.onclick = () =>
+      toggleLike(
+        post.id,
+        likes,
+        likeBtn
+      );
+
+  }
+
+  const commentBtn =
+    div.querySelector(
+      ".post-comment-btn"
+    );
+
+  if (commentBtn) {
+
+    commentBtn.onclick = () =>
+      addComment(
+        post.id
+      );
+
+  }
+
+  const shareBtn =
+    div.querySelector(
+      ".post-share-btn"
+    );
+
+  if (shareBtn) {
+
+    shareBtn.onclick = () =>
+      sharePost(
+        post.content
+      );
+
+  }
+
+  feed.appendChild(div);
+
+}
+
+
+/* =========================================================
+   CREATE POST
+========================================================= */
+
+async function createPost() {
+
+  if (!currentUser) {
+
+    showAuth("login");
+
+    return;
+  }
+
+  const input =
+    $("#postInput");
+
+  if (!input)
+    return;
+
+  const content =
+    input.value.trim();
+
+  if (!content) {
+
+    alert(
+      "Write something first."
+    );
+
+    return;
+  }
+
+  const {
+    data,
+    error
+  } =
+    await supabaseClient
+      .from("posts")
+      .insert({
+        user_id:
+          currentUser.id,
+        content
+      })
+      .select()
+      .single();
+
+  if (error) {
+
+    console.error(error);
+
+    alert(
+      "Post error: " +
+      error.message
+    );
+
+    return;
+  }
+
+  input.value = "";
+
+  await addXP(10);
+
+  await createCreatorBadge();
+
+  await loadFeed();
+
+}
+
+
+async function createCreatorBadge() {
+
+  if (!currentUser)
+    return;
+
+  const {
+    data: badge
+  } =
+    await supabaseClient
+      .from("badges")
+      .select("id")
+      .eq(
+        "name",
+        "Creator"
+      )
+      .maybeSingle();
+
+  if (!badge)
+    return;
+
+  await supabaseClient
+    .from("user_badges")
+    .upsert({
+      user_id:
+        currentUser.id,
+      badge_id:
+        badge.id
+    });
+
+}
+
+
+/* =========================================================
+   LIKES
+========================================================= */
+
+async function toggleLike(
+  postId,
+  likes,
+  button
+) {
+
+  if (!currentUser)
+    return;
+
+  const existing =
+    likes.find(
+      like =>
+        like.user_id ===
+        currentUser.id
+    );
+
+  if (existing) {
+
+    const {
+      error
+    } =
+      await supabaseClient
+        .from("post_likes")
+        .delete()
+        .eq(
+          "post_id",
+          postId
+        )
+        .eq(
+          "user_id",
+          currentUser.id
+        );
+
+    if (error) {
+
+      console.error(error);
+
+      return;
+    }
+
+  } else {
+
+    const {
+      error
+    } =
+      await supabaseClient
+        .from("post_likes")
+        .insert({
+          post_id:
+            postId,
+          user_id:
+            currentUser.id
+        });
+
+    if (error) {
+
+      console.error(error);
+
+      return;
+    }
+
+    await addXP(1);
+
+  }
+
+  await loadFeed();
+
+}
+
+
+/* =========================================================
+   COMMENTS
+========================================================= */
+
+async function addComment(postId) {
+
+  if (!currentUser)
+    return;
+
+  const content =
+    prompt(
+      "Write your comment:"
+    );
+
+  if (!content?.trim())
+    return;
+
+  const {
+    error
+  } =
+    await supabaseClient
+      .from("comments")
+      .insert({
+        post_id:
+          postId,
+        user_id:
+          currentUser.id,
+        content:
+          content.trim()
+      });
+
+  if (error) {
+
+    alert(
+      "Comment error: " +
+      error.message
+    );
+
+    return;
+  }
+
+  await addXP(3);
+
+  await loadFeed();
+
+}
+
+
+async function sharePost(text) {
+
+  try {
+
+    if (
+      navigator.clipboard
+    ) {
+
+      await navigator.clipboard
+        .writeText(text);
+
+      showXP(
+        "📋 Copied!"
+      );
+
+      return;
+    }
+
+  } catch (error) {
+
+    console.error(error);
+
+  }
+
+  alert(text);
+
+}
+
+
+/* =========================================================
+   POLLS
+========================================================= */
+
+function togglePollCreator() {
+
+  const creator =
+    $("#pollCreator");
+
+  if (!creator)
+    return;
+
+  creator.classList.toggle(
+    "hidden"
+  );
+
+}
+
+
+async function createPoll() {
+
+  if (!currentUser)
+    return;
+
+  const question =
+    safeText(
+      $("#pollQuestion")?.value
+    );
+
+  const optionInputs =
+    document.querySelectorAll(
+      ".poll-option"
+    );
+
+  const options =
+    [...optionInputs]
+      .map(
+        input =>
+          input.value.trim()
+      )
+      .filter(Boolean)
+      .slice(0, 4);
+
+  if (!question) {
+
+    alert(
+      "Enter a poll question."
+    );
+
+    return;
+  }
+
+  if (options.length < 2) {
+
+    alert(
+      "Add at least 2 options."
+    );
+
+    return;
+  }
+
+  try {
+
+    const {
+      data: post,
+      error: postError
+    } =
+      await supabaseClient
+        .from("posts")
+        .insert({
+          user_id:
+            currentUser.id,
+          content:
+            question
+        })
+        .select()
+        .single();
+
+    if (postError)
+      throw postError;
+
+    const {
+      data: poll,
+      error: pollError
+    } =
+      await supabaseClient
+        .from("polls")
+        .insert({
+          post_id:
+            post.id,
+          question
+        })
+        .select()
+        .single();
+
+    if (pollError)
+      throw pollError;
+
+    const rows =
+      options.map(
+        option => ({
+          poll_id:
+            poll.id,
+          option_text:
+            option,
+          votes: 0
+        })
+      );
+
+    const {
+      error: optionError
+    } =
+      await supabaseClient
+        .from("poll_options")
+        .insert(rows);
+
+    if (optionError)
+      throw optionError;
+
+    if ($("#pollQuestion"))
+      $("#pollQuestion").value = "";
+
+    optionInputs.forEach(
+      input =>
+        input.value = ""
+    );
+
+    hideElement("#pollCreator");
+
+    await addXP(15);
+
+    await loadFeed();
+
+  } catch (error) {
+
+    console.error(error);
+
+    alert(
+      "Poll creation error: " +
+      error.message
+    );
 
   }
 
 }
 
 
-/* =========================
-   CHANNEL CLEANUP
-========================= */
+/* =========================================================
+   POLL VOTING
+========================================================= */
 
-function removeChannels(){
+async function votePoll(
+  pollId,
+  optionId
+) {
+
+  if (!currentUser)
+    return;
+
+  const {
+    error
+  } =
+    await supabaseClient
+      .from("poll_votes")
+      .insert({
+        poll_id:
+          pollId,
+        option_id:
+          optionId,
+        user_id:
+          currentUser.id
+      });
+
+  if (error) {
+
+    if (
+      error.code === "23505"
+    ) {
+
+      alert(
+        "You already voted in this poll."
+      );
+
+    } else {
+
+      alert(
+        "Vote error: " +
+        error.message
+      );
+
+    }
+
+    return;
+  }
+
+  await addXP(2);
+
+  await loadFeed();
+
+}
+
+
+/* =========================================================
+   COMMUNITIES
+========================================================= */
+
+function openCommunities() {
+
+  if (!currentUser) {
+
+    showAuth("login");
+
+    return;
+  }
+
+  hideElement("#home");
+  hideElement("#chat");
+  hideElement("#feedScreen");
+  hideElement("#peopleScreen");
+
+  showElement("#communitiesScreen");
+
+  loadCommunities();
+
+}
+
+
+async function loadCommunities(
+  search = ""
+) {
+
+  const list =
+    $("#communityList");
+
+  if (!list)
+    return;
+
+  list.innerHTML = `
+    <div class="empty-state">
+      <span>⏳</span>
+      Loading communities...
+    </div>
+  `;
+
+  let query =
+    supabaseClient
+      .from("communities")
+      .select("*")
+      .order(
+        "created_at",
+        {
+          ascending: false
+        }
+      );
+
+  if (search) {
+
+    query =
+      query.ilike(
+        "name",
+        `%${search}%`
+      );
+
+  }
+
+  const {
+    data,
+    error
+  } =
+    await query;
+
+  if (error) {
+
+    console.error(error);
+
+    list.innerHTML = `
+      <div class="empty-state">
+        <span>⚠️</span>
+        Failed to load communities.
+      </div>
+    `;
+
+    return;
+  }
+
+  currentCommunities =
+    data || [];
+
+  list.innerHTML = "";
+
+  if (!data?.length) {
+
+    list.innerHTML = `
+      <div class="empty-state">
+        <span>🌐</span>
+        No communities found.
+      </div>
+    `;
+
+    return;
+  }
+
+  data.forEach(
+    community =>
+      renderCommunity(
+        community
+      )
+  );
+
+}
+
+
+function renderCommunity(
+  community
+) {
+
+  const list =
+    $("#communityList");
+
+  if (!list)
+    return;
+
+  const card =
+    document.createElement("div");
+
+  card.className =
+    "community-card";
+
+  card.innerHTML = `
+    <div class="community-icon">
+      ${escapeHtml(
+        community.icon ||
+        "🌐"
+      )}
+    </div>
+
+    <div class="community-info">
+
+      <h3>
+        ${escapeHtml(
+          community.name
+        )}
+      </h3>
+
+      <p>
+        ${escapeHtml(
+          community.description ||
+          "A ZUNO community."
+        )}
+      </p>
+
+    </div>
+
+    <button
+      class="secondary-btn community-join"
+    >
+      Join
+    </button>
+  `;
+
+  const button =
+    card.querySelector(
+      ".community-join"
+    );
+
+  if (button) {
+
+    button.onclick = () =>
+      joinCommunity(
+        community.id,
+        button
+      );
+
+  }
+
+  list.appendChild(card);
+
+}
+
+
+async function createCommunity() {
+
+  if (!currentUser)
+    return;
+
+  const name =
+    safeText(
+      $("#communityName")?.value
+    )
+      .slice(0, 40);
+
+  const description =
+    safeText(
+      $("#communityDescription")?.value
+    )
+      .slice(0, 180);
+
+  const icon =
+    safeText(
+      $("#communityIcon")?.value,
+      "🌐"
+    )
+      .slice(0, 4);
+
+  if (name.length < 2) {
+
+    alert(
+      "Community name is too short."
+    );
+
+    return;
+  }
+
+  const {
+    data,
+    error
+  } =
+    await supabaseClient
+      .from("communities")
+      .insert({
+        name,
+        description,
+        icon,
+        owner_id:
+          currentUser.id
+      })
+      .select()
+      .single();
+
+  if (error) {
+
+    alert(
+      "Community error: " +
+      error.message
+    );
+
+    return;
+  }
+
+  await supabaseClient
+    .from("community_members")
+    .insert({
+      community_id:
+        data.id,
+      user_id:
+        currentUser.id,
+      role:
+        "owner"
+    });
+
+  await addXP(20);
+
+  hideElement(
+    "#communityModal"
+  );
+
+  if ($("#communityName"))
+    $("#communityName").value = "";
+
+  if ($("#communityDescription"))
+    $("#communityDescription").value = "";
+
+  await loadCommunities();
+
+}
+
+
+async function joinCommunity(
+  communityId,
+  button
+) {
+
+  if (!currentUser)
+    return;
+
+  const {
+    error
+  } =
+    await supabaseClient
+      .from("community_members")
+      .upsert({
+        community_id:
+          communityId,
+        user_id:
+          currentUser.id,
+        role:
+          "member"
+      });
+
+  if (error) {
+
+    alert(
+      "Join error: " +
+      error.message
+    );
+
+    return;
+  }
+
+  if (button) {
+
+    button.textContent =
+      "Joined ✓";
+
+    button.disabled =
+      true;
+
+  }
+
+  await addXP(5);
+
+       }
+
+/* =========================================================
+   PEOPLE DISCOVERY
+========================================================= */
+
+function openPeople() {
+
+  if (!currentUser) {
+
+    showAuth("login");
+
+    return;
+  }
+
+  hideElement("#home");
+  hideElement("#chat");
+  hideElement("#feedScreen");
+  hideElement("#communitiesScreen");
+
+  showElement("#peopleScreen");
+
+  loadPeople();
+
+}
+
+
+async function loadPeople(
+  search = ""
+) {
+
+  const list =
+    $("#discoverPeopleList");
+
+  if (!list)
+    return;
+
+  list.innerHTML = `
+    <div class="empty-state">
+      <span>⏳</span>
+      Finding people...
+    </div>
+  `;
+
+  let query =
+    supabaseClient
+      .from("profiles")
+      .select(
+        "id,username,bio,avter_url"
+      )
+      .order(
+        "created_at",
+        {
+          ascending: false
+        }
+      )
+      .limit(50);
+
+  if (search) {
+
+    query =
+      query.ilike(
+        "username",
+        `%${search}%`
+      );
+
+  }
+
+  const {
+    data,
+    error
+  } =
+    await query;
+
+  if (error) {
+
+    console.error(error);
+
+    return;
+  }
+
+  list.innerHTML = "";
+
+  const people =
+    (data || [])
+      .filter(
+        person =>
+          person.id !==
+          currentUser.id
+      );
+
+  if (!people.length) {
+
+    list.innerHTML = `
+      <div class="empty-state">
+        <span>👀</span>
+        No people found.
+      </div>
+    `;
+
+    return;
+  }
+
+  people.forEach(
+    person => {
+
+      const div =
+        document.createElement(
+          "div"
+        );
+
+      div.className =
+        "person";
+
+      const avatar =
+        person.avter_url ||
+        defaultAvatar(
+          person.username
+        );
+
+      div.innerHTML = `
+        <img
+          class="online-avatar"
+          src="${escapeHtml(avatar)}"
+          alt=""
+        >
+
+        <div class="online-user-info">
+
+          <b>
+            ${escapeHtml(
+              person.username
+            )}
+          </b>
+
+          <small>
+            ${escapeHtml(
+              person.bio ||
+              "ZUNO member"
+            )}
+          </small>
+
+        </div>
+
+        <button
+          class="secondary-btn"
+        >
+          Chat
+        </button>
+      `;
+
+      const btn =
+        div.querySelector(
+          "button"
+        );
+
+      if (btn) {
+
+        btn.onclick = () =>
+          openPrivateChatFromPeople(
+            person.username
+          );
+
+      }
+
+      list.appendChild(div);
+
+    }
+  );
+
+}
+
+
+async function openPrivateChatFromPeople(
+  person
+) {
+
+  hideElement("#peopleScreen");
+
+  showElement("#chat");
+
+  currentRoom =
+    currentRoom ||
+    "Chill Zone";
+
+  renderRoom();
+
+  await loadRoomTopic();
+
+  await joinOnlineUsers();
+
+  await renderMessages();
+
+  setupRealtime();
+
+  setupTyping();
+
+  await openPrivateChat(
+    person
+  );
+
+}
+
+
+/* =========================================================
+   NOTIFICATIONS
+========================================================= */
+
+async function loadNotifications() {
+
+  if (!currentUser)
+    return;
+
+  const list =
+    $("#notificationList");
+
+  if (!list)
+    return;
+
+  const {
+    data,
+    error
+  } =
+    await supabaseClient
+      .from("notifications")
+      .select("*")
+      .eq(
+        "user_id",
+        currentUser.id
+      )
+      .order(
+        "created_at",
+        {
+          ascending: false
+        }
+      )
+      .limit(30);
+
+  if (error) {
+
+    console.error(
+      "Notifications error:",
+      error
+    );
+
+    return;
+  }
+
+  list.innerHTML = "";
+
+  if (!data?.length) {
+
+    list.innerHTML = `
+      <div class="empty-state">
+        <span>🔔</span>
+        No notifications yet.
+      </div>
+    `;
+
+    updateNotificationBadge(
+      0
+    );
+
+    return;
+  }
+
+  const unread =
+    data.filter(
+      item =>
+        !item.is_read
+    ).length;
+
+  updateNotificationBadge(
+    unread
+  );
+
+  data.forEach(item => {
+
+    const div =
+      document.createElement(
+        "div"
+      );
+
+    div.className =
+      "notification-item";
+
+    div.innerHTML = `
+      <b>
+        ${escapeHtml(
+          item.message
+        )}
+      </b>
+
+      <small>
+        ${formatDate(
+          item.created_at
+        )}
+      </small>
+    `;
+
+    list.appendChild(div);
+
+  });
+
+}
+
+
+function updateNotificationBadge(
+  count
+) {
+
+  const badge =
+    $("#notificationBadge");
+
+  if (!badge)
+    return;
+
+  badge.textContent =
+    count > 99
+      ? "99+"
+      : String(count);
+
+  badge.classList.toggle(
+    "hidden",
+    count <= 0
+  );
+
+}
+
+
+async function markNotificationsRead() {
+
+  if (!currentUser)
+    return;
+
+  await supabaseClient
+    .from("notifications")
+    .update({
+      is_read: true
+    })
+    .eq(
+      "user_id",
+      currentUser.id
+    )
+    .eq(
+      "is_read",
+      false
+    );
+
+  updateNotificationBadge(
+    0
+  );
+
+}
+
+
+/* =========================================================
+   BADGES
+========================================================= */
+
+async function loadBadges() {
+
+  if (!currentUser)
+    return;
+
+  const {
+    data,
+    error
+  } =
+    await supabaseClient
+      .from("user_badges")
+      .select(
+        "earned_at,badges(name,description,icon)"
+      )
+      .eq(
+        "user_id",
+        currentUser.id
+      )
+      .order(
+        "earned_at",
+        {
+          ascending: false
+        }
+      );
+
+  if (error) {
+
+    console.error(
+      "Badges error:",
+      error
+    );
+
+    return;
+  }
+
+  console.log(
+    "ZUNO badges:",
+    data
+  );
+
+}
+
+
+/* =========================================================
+   CHANNEL CLEANUP
+========================================================= */
+
+function removeChannels() {
 
   const channels = [
     realtimeChannel,
@@ -2081,18 +3763,20 @@ function removeChannels(){
     typingChannel
   ];
 
+  channels.forEach(
+    channel => {
 
-  channels.forEach(channel => {
+      if (channel) {
 
-    if(channel){
+        supabaseClient
+          .removeChannel(
+            channel
+          );
 
-      supabaseClient
-        .removeChannel(channel);
+      }
 
     }
-
-  });
-
+  );
 
   realtimeChannel = null;
   privateChannel = null;
@@ -2102,11 +3786,11 @@ function removeChannels(){
 }
 
 
-/* =========================
+/* =========================================================
    THEME
-========================= */
+========================================================= */
 
-function loadTheme(){
+function loadTheme() {
 
   const theme =
     localStorage.getItem(
@@ -2116,61 +3800,111 @@ function loadTheme(){
       "vibechat_theme"
     );
 
-
-  if(theme === "light"){
+  if (theme === "light") {
 
     document.body
-      .classList.add("light");
+      .classList.add(
+        "light"
+      );
 
-    $("#themeBtn")
-      .textContent = "☀";
+    if ($("#themeBtn"))
+      $("#themeBtn").textContent =
+        "☀";
+
+  } else {
+
+    document.body
+      .classList.remove(
+        "light"
+      );
+
+    if ($("#themeBtn"))
+      $("#themeBtn").textContent =
+        "☾";
 
   }
 
 }
 
 
-function toggleTheme(){
+function toggleTheme() {
 
   const light =
     document.body
-      .classList.toggle("light");
-
+      .classList.toggle(
+        "light"
+      );
 
   localStorage.setItem(
     "zuno_theme",
-    light ? "light" : "dark"
+    light
+      ? "light"
+      : "dark"
   );
 
-
-  $("#themeBtn")
-    .textContent =
-      light ? "☀" : "☾";
+  if ($("#themeBtn"))
+    $("#themeBtn").textContent =
+      light
+        ? "☀"
+        : "☾";
 
 }
 
 
-/* =========================
-   EVENTS
-========================= */
+/* =========================================================
+   NAVIGATION
+========================================================= */
 
-$("#joinBtn").onclick = () => {
+function goHome() {
 
-  if(currentUser)
-    enter(currentRoom);
-  else
-    showAuth("login");
+  clearHeartbeat();
 
-};
+  removeOwnOnlineUser();
+
+  hideElement("#chat");
+  hideElement("#feedScreen");
+  hideElement("#communitiesScreen");
+  hideElement("#peopleScreen");
+
+  showElement("#home");
+
+}
 
 
-$("#nameInput").addEventListener(
+function closeAllScreens() {
+
+  hideElement("#chat");
+  hideElement("#feedScreen");
+  hideElement("#communitiesScreen");
+  hideElement("#peopleScreen");
+
+}
+
+
+/* =========================================================
+   EVENTS — AUTH
+========================================================= */
+
+$("#joinBtn")?.addEventListener(
+  "click",
+  () => {
+
+    if (currentUser)
+      enter(currentRoom);
+    else
+      showAuth("login");
+
+  }
+);
+
+
+$("#nameInput")?.addEventListener(
   "keydown",
   e => {
 
-    if(e.key === "Enter"){
+    if (e.key === "Enter") {
 
-      if(currentUser)
+      if (currentUser)
         enter(currentRoom);
       else
         showAuth("login");
@@ -2181,168 +3915,46 @@ $("#nameInput").addEventListener(
 );
 
 
-document
-  .querySelectorAll(".roomcard")
-  .forEach(card => {
-
-    card.onclick = () =>
-      enter(card.dataset.room);
-
-  });
+$("#closeAuthBtn")?.addEventListener(
+  "click",
+  closeAuth
+);
 
 
-document
-  .querySelectorAll(".room")
-  .forEach(button => {
+$("#authSwitchBtn")?.addEventListener(
+  "click",
+  () => {
 
-    button.onclick = async () => {
-
-      if(!currentUser){
-
-        showAuth("login");
-
-        return;
-      }
-
-
-      closePrivateChat();
-
-
-      currentRoom =
-        button.dataset.room;
-
-
-      renderRoom();
-
-      await joinOnlineUsers();
-
-      await loadRoomTopic();
-
-      await renderMessages();
-
-      setupRealtime();
-
-      setupTyping();
-
-    };
-
-  });
-
-
-$("#sendBtn").onclick =
-  send;
-
-
-$("#messageInput").addEventListener(
-  "keydown",
-  e => {
-
-    if(e.key === "Enter")
-      send();
+    showAuth(
+      authMode === "login"
+        ? "signup"
+        : "login"
+    );
 
   }
 );
 
 
-$("#messageInput").addEventListener(
-  "input",
-  broadcastTyping
+$("#authSubmitBtn")?.addEventListener(
+  "click",
+  () => {
+
+    if (authMode === "login")
+      login();
+    else
+      signup();
+
+  }
 );
 
 
-$("#emojiBtn").onclick = () => {
-
-  $("#emojiPanel")
-    .classList.toggle(
-      "hidden"
-    );
-
-};
-
-
-document
-  .querySelectorAll(
-    "#emojiPanel button"
-  )
-  .forEach(button => {
-
-    button.onclick = () => {
-
-      const input =
-        $("#messageInput");
-
-
-      input.value +=
-        button.textContent;
-
-
-      input.focus();
-
-    };
-
-  });
-
-
-$("#usersBtn").onclick = () => {
-
-  $("#people")
-    .classList.toggle("show");
-
-};
-
-
-$("#privateBackBtn").onclick =
-  closePrivateChat;
-
-
-$("#editTopicBtn").onclick =
-  openTopicEditor;
-
-
-$("#closeTopicBtn").onclick =
-  closeTopicEditor;
-
-
-$("#cancelTopicBtn").onclick =
-  closeTopicEditor;
-
-
-$("#saveTopicBtn").onclick =
-  saveRoomTopic;
-
-
-$("#closeAuthBtn").onclick =
-  closeAuth;
-
-
-$("#authSwitchBtn").onclick = () => {
-
-  showAuth(
-    authMode === "login"
-      ? "signup"
-      : "login"
-  );
-
-};
-
-
-$("#authSubmitBtn").onclick = () => {
-
-  if(authMode === "login")
-    login();
-  else
-    signup();
-
-};
-
-
-$("#authPassword").addEventListener(
+$("#authPassword")?.addEventListener(
   "keydown",
   e => {
 
-    if(e.key === "Enter"){
+    if (e.key === "Enter") {
 
-      if(authMode === "login")
+      if (authMode === "login")
         login();
       else
         signup();
@@ -2353,88 +3965,451 @@ $("#authPassword").addEventListener(
 );
 
 
-$("#logoutBtn").onclick =
-  logout;
+/* =========================================================
+   EVENTS — ROOMS
+========================================================= */
+
+document
+  .querySelectorAll(".roomcard")
+  .forEach(card => {
+
+    card.addEventListener(
+      "click",
+      () =>
+        enter(
+          card.dataset.room
+        )
+    );
+
+  });
 
 
-$("#profileBtn").onclick =
-  openProfile;
+document
+  .querySelectorAll(".room")
+  .forEach(button => {
+
+    button.addEventListener(
+      "click",
+      async () => {
+
+        if (!currentUser) {
+
+          showAuth("login");
+
+          return;
+        }
+
+        closePrivateChat();
+
+        currentRoom =
+          button.dataset.room;
+
+        renderRoom();
+
+        await joinOnlineUsers();
+
+        await loadRoomTopic();
+
+        await renderMessages();
+
+        setupRealtime();
+
+        setupTyping();
+
+      }
+    );
+
+  });
 
 
-$("#closeProfileBtn").onclick =
-  closeProfile;
+/* =========================================================
+   EVENTS — CHAT
+========================================================= */
+
+$("#sendBtn")?.addEventListener(
+  "click",
+  send
+);
 
 
-$("#saveProfileBtn").onclick =
-  saveProfile;
+$("#messageInput")?.addEventListener(
+  "keydown",
+  e => {
 
+    if (
+      e.key === "Enter" &&
+      !e.shiftKey
+    ) {
 
-$("#avatarInput").addEventListener(
-  "change",
-  () => {
+      e.preventDefault();
 
-    const file =
-      $("#avatarInput").files[0];
+      send();
 
-
-    if(!file)
-      return;
-
-
-    const reader =
-      new FileReader();
-
-
-    reader.onload = e => {
-
-      $("#profileAvatar").src =
-        e.target.result;
-
-    };
-
-
-    reader.readAsDataURL(file);
+    }
 
   }
 );
 
 
-$("#themeBtn").onclick =
-  toggleTheme;
+$("#messageInput")?.addEventListener(
+  "input",
+  broadcastTyping
+);
 
 
-$("#backBtn").onclick =
+$("#emojiBtn")?.addEventListener(
+  "click",
+  () => {
+
+    $("#emojiPanel")
+      ?.classList.toggle(
+        "hidden"
+      );
+
+  }
+);
+
+
+document
+  .querySelectorAll(
+    "#emojiPanel button"
+  )
+  .forEach(button => {
+
+    button.addEventListener(
+      "click",
+      () => {
+
+        const input =
+          $("#messageInput");
+
+        if (!input)
+          return;
+
+        input.value +=
+          button.textContent;
+
+        input.focus();
+
+      }
+    );
+
+  });
+
+
+$("#usersBtn")?.addEventListener(
+  "click",
+  () => {
+
+    $("#people")
+      ?.classList.toggle(
+        "show"
+      );
+
+  }
+);
+
+
+$("#privateBackBtn")?.addEventListener(
+  "click",
+  closePrivateChat
+);
+
+
+$("#backBtn")?.addEventListener(
+  "click",
+  goHome
+);
+
+
+/* =========================================================
+   EVENTS — TOPBAR
+========================================================= */
+
+$("#themeBtn")?.addEventListener(
+  "click",
+  toggleTheme
+);
+
+
+$("#profileBtn")?.addEventListener(
+  "click",
+  openProfile
+);
+
+
+$("#closeProfileBtn")?.addEventListener(
+  "click",
+  closeProfile
+);
+
+
+$("#saveProfileBtn")?.addEventListener(
+  "click",
+  saveProfile
+);
+
+
+$("#logoutBtn")?.addEventListener(
+  "click",
+  logout
+);
+
+
+$("#notificationBtn")?.addEventListener(
+  "click",
   async () => {
 
-    clearHeartbeat();
+    showElement(
+      "#notificationModal"
+    );
 
-    await removeOwnOnlineUser();
+    await loadNotifications();
 
-    removeChannels();
+    await markNotificationsRead();
 
-    closePrivateChat();
-
-    $("#chat")
-      .classList.add("hidden");
-
-    $("#home")
-      .classList.remove("hidden");
-
-  };
+  }
+);
 
 
-/* =========================
-   START
-========================= */
+$("#closeNotificationBtn")?.addEventListener(
+  "click",
+  () =>
+    hideElement(
+      "#notificationModal"
+    )
+);
 
-(async function(){
+/* =========================================================
+   EVENTS — PROFILE AVATAR
+========================================================= */
 
-  renderRoom();
+$("#avatarInput")?.addEventListener(
+  "change",
+  () => {
 
-  loadTheme();
+    const file =
+      $("#avatarInput")
+        ?.files?.[0];
 
-  await checkAuth();
+    if (!file)
+      return;
 
-  updateLevel();
+    const reader =
+      new FileReader();
+
+    reader.onload =
+      e => {
+
+        if ($("#profileAvatar"))
+          $("#profileAvatar")
+            .src =
+              e.target.result;
+
+      };
+
+    reader.readAsDataURL(
+      file
+    );
+
+  }
+);
+
+
+/* =========================================================
+   EVENTS — TOPIC
+========================================================= */
+
+$("#editTopicBtn")?.addEventListener(
+  "click",
+  openTopicEditor
+);
+
+
+$("#closeTopicBtn")?.addEventListener(
+  "click",
+  closeTopicEditor
+);
+
+
+$("#cancelTopicBtn")?.addEventListener(
+  "click",
+  closeTopicEditor
+);
+
+
+$("#saveTopicBtn")?.addEventListener(
+  "click",
+  saveRoomTopic
+);
+
+
+/* =========================================================
+   EVENTS — FEED
+========================================================= */
+
+$("#openFeedBtn")?.addEventListener(
+  "click",
+  openFeed
+);
+
+
+$("#feedBackBtn")?.addEventListener(
+  "click",
+  goHome
+);
+
+
+$("#createPostBtn")?.addEventListener(
+  "click",
+  createPost
+);
+
+
+$("#pollBtn")?.addEventListener(
+  "click",
+  togglePollCreator
+);
+
+
+/* =========================================================
+   EVENTS — COMMUNITIES
+========================================================= */
+
+$("#openCommunitiesBtn")?.addEventListener(
+  "click",
+  openCommunities
+);
+
+
+$("#communitiesBackBtn")?.addEventListener(
+  "click",
+  goHome
+);
+
+
+$("#createCommunityBtn")?.addEventListener(
+  "click",
+  () =>
+    showElement(
+      "#communityModal"
+    )
+);
+
+
+$("#closeCommunityBtn")?.addEventListener(
+  "click",
+  () =>
+    hideElement(
+      "#communityModal"
+    )
+);
+
+
+$("#cancelCommunityBtn")?.addEventListener(
+  "click",
+  () =>
+    hideElement(
+      "#communityModal"
+    )
+);
+
+
+$("#saveCommunityBtn")?.addEventListener(
+  "click",
+  createCommunity
+);
+
+
+$("#communitySearch")?.addEventListener(
+  "input",
+  e =>
+    loadCommunities(
+      e.target.value.trim()
+    )
+);
+
+
+/* =========================================================
+   EVENTS — PEOPLE
+========================================================= */
+
+$("#openPeopleBtn")?.addEventListener(
+  "click",
+  openPeople
+);
+
+
+$("#peopleBackBtn")?.addEventListener(
+  "click",
+  goHome
+);
+
+
+$("#peopleSearch")?.addEventListener(
+  "input",
+  e =>
+    loadPeople(
+      e.target.value.trim()
+    )
+);
+
+
+/* =========================================================
+   AUTH STATE CHANGES
+========================================================= */
+
+supabaseClient.auth.onAuthStateChange(
+  async (event, session) => {
+
+    if (session?.user) {
+
+      currentUser =
+        session.user;
+
+      await loadProfile();
+
+      await loadXP();
+
+      updateUserUI();
+
+    }
+
+  }
+);
+
+
+/* =========================================================
+   START ZUNO
+========================================================= */
+
+(async function startZuno() {
+
+  try {
+
+    renderRoom();
+
+    loadTheme();
+
+    await checkAuth();
+
+    if (currentUser) {
+
+      await loadXP();
+
+      await loadNotifications();
+
+      await loadBadges();
+
+    }
+
+  } catch (error) {
+
+    console.error(
+      "ZUNO startup error:",
+      error
+    );
+
+  }
 
 })();
