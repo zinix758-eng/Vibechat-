@@ -1,62 +1,103 @@
 <!doctype html>
 <html lang="en">
 <head>
+
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<meta name="viewport"
+      content="width=device-width,initial-scale=1">
+
 <title>ZUNO — Find your people</title>
 
-<link rel="stylesheet" href="style.css">
+<link rel="stylesheet"
+      href="style.css">
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
 </head>
+
 
 <body>
 
-<!-- AUTH -->
-<div id="authModal" class="auth-modal hidden">
+
+<!-- ==================================================
+     AUTH MODAL
+================================================== -->
+
+<div id="authModal"
+     class="auth-modal hidden">
+
   <div class="auth-box">
-    <button id="closeAuthBtn" class="auth-close">✕</button>
 
-    <div class="auth-logo">Z</div>
+    <button id="closeAuthBtn"
+            class="auth-close">
+      ✕
+    </button>
 
-    <h2 id="authTitle">Welcome Back</h2>
-    <p id="authSubtitle">Login to continue to ZUNO</p>
+    <div class="auth-logo">
+      Z
+    </div>
+
+    <h2 id="authTitle">
+      Welcome Back
+    </h2>
+
+    <p id="authSubtitle">
+      Login to continue to ZUNO
+    </p>
 
     <input id="authEmail"
-      type="email"
-      placeholder="Email address"
-      autocomplete="email">
+           type="email"
+           placeholder="Email address"
+           autocomplete="email">
 
     <input id="authPassword"
-      type="password"
-      placeholder="Password"
-      autocomplete="current-password">
+           type="password"
+           placeholder="Password"
+           autocomplete="current-password">
 
     <input id="authUsername"
-      type="text"
-      maxlength="20"
-      placeholder="Username"
-      class="hidden">
+           type="text"
+           maxlength="20"
+           placeholder="Username"
+           class="hidden">
 
-    <button id="authSubmitBtn" class="auth-submit">
+    <button id="authSubmitBtn"
+            class="auth-submit">
       Login
     </button>
 
-    <button id="authSwitchBtn" class="auth-switch">
+    <button id="authSwitchBtn"
+            class="auth-switch">
       Don't have an account? Sign up
     </button>
 
-    <p id="authMessage" class="auth-message"></p>
+    <p id="authMessage"
+       class="auth-message">
+    </p>
+
   </div>
+
 </div>
 
 
-<!-- PROFILE -->
-<div id="profileModal" class="profile-modal hidden">
+
+<!-- ==================================================
+     PROFILE MODAL
+================================================== -->
+
+<div id="profileModal"
+     class="profile-modal hidden">
+
   <div class="profile-box">
 
-    <button id="closeProfileBtn" class="profile-close">✕</button>
+    <button id="closeProfileBtn"
+            class="profile-close">
+      ✕
+    </button>
 
     <div class="profile-avatar-wrap">
+
       <img id="profileAvatar"
            class="profile-avatar"
            src=""
@@ -71,12 +112,18 @@
              type="file"
              accept="image/*"
              class="hidden">
+
     </div>
 
-    <h2>Edit Profile</h2>
+
+    <h2>
+      Edit Profile
+    </h2>
+
     <p class="profile-subtitle">
       Make your ZUNO profile yours
     </p>
+
 
     <label class="profile-label">
       Username
@@ -87,6 +134,7 @@
            maxlength="20"
            placeholder="Username">
 
+
     <label class="profile-label">
       Bio
     </label>
@@ -96,19 +144,69 @@
               maxlength="120"
               placeholder="Tell something about yourself..."></textarea>
 
+
     <button id="saveProfileBtn"
             class="profile-save">
       Save Profile
     </button>
 
     <p id="profileMessage"
-       class="profile-message"></p>
+       class="profile-message">
+    </p>
+
   </div>
+
 </div>
 
 
-<!-- APP -->
+
+<!-- ==================================================
+     NOTIFICATION MODAL
+================================================== -->
+
+<div id="notificationModal"
+     class="profile-modal hidden">
+
+  <div class="profile-box notification-box">
+
+    <button id="closeNotificationBtn"
+            class="profile-close">
+      ✕
+    </button>
+
+    <h2>
+      🔔 Notifications
+    </h2>
+
+    <p class="profile-subtitle">
+      Stay updated with ZUNO
+    </p>
+
+    <div id="notificationList">
+
+      <div class="empty-state">
+        <span>🔔</span>
+        No notifications yet.
+      </div>
+
+    </div>
+
+  </div>
+
+</div>
+
+
+
+<!-- ==================================================
+     APP
+================================================== -->
+
 <div id="app">
+
+
+<!-- ==================================================
+     TOPBAR
+================================================== -->
 
 <header class="topbar">
 
@@ -119,35 +217,64 @@
     </div>
 
     <div>
-      <b>ZUNO</b>
-      <small>Find your people. Create your vibe.</small>
+
+      <b>
+        ZUNO
+      </b>
+
+      <small>
+        Find your people. Create your vibe.
+      </small>
+
     </div>
 
   </div>
 
+
   <div class="top-actions">
+
     <button id="themeBtn"
             class="iconbtn">
       ☾
     </button>
+
+
+    <button id="notificationBtn"
+            class="iconbtn hidden"
+            title="Notifications">
+      🔔
+      <span id="notificationBadge"
+            class="notification-badge hidden">
+        0
+      </span>
+    </button>
+
 
     <button id="profileBtn"
             class="profile-top-btn hidden">
       👤
     </button>
 
+
     <button id="logoutBtn"
             class="iconbtn hidden"
             title="Logout">
       ↪
     </button>
+
   </div>
 
 </header>
 
 
-<!-- HOME -->
-<main id="home" class="screen">
+
+<!-- ==================================================
+     HOME
+================================================== -->
+
+<main id="home"
+      class="screen">
+
 
 <section class="hero">
 
@@ -157,13 +284,16 @@
 
   <h1>
     Find your people.<br>
-    <span>Create your vibe.</span>
+    <span>
+      Create your vibe.
+    </span>
   </h1>
 
   <p>
     Communities, conversations and people
     who match your vibe.
   </p>
+
 
   <div class="joinbox">
 
@@ -177,6 +307,7 @@
 
   </div>
 
+
   <p class="hint">
     Login or create an account to enter ZUNO.
   </p>
@@ -184,54 +315,188 @@
 </section>
 
 
-<!-- FEATURES -->
+
+<!-- ==================================================
+     FEATURE CARDS
+================================================== -->
+
 <section class="feature-row">
 
-  <div class="feature">
-    <span>💬</span>
-    <b>Chat</b>
-    <small>Real-time conversations</small>
-  </div>
 
   <div class="feature">
-    <span>🌎</span>
-    <b>Communities</b>
-    <small>Find your people</small>
+
+    <span>
+      💬
+    </span>
+
+    <b>
+      Chat
+    </b>
+
+    <small>
+      Real-time conversations
+    </small>
+
   </div>
 
-  <div class="feature">
-    <span>⭐</span>
-    <b>XP & Levels</b>
-    <small>Build your reputation</small>
-  </div>
 
   <div class="feature">
-    <span>🤖</span>
-    <b>AI</b>
-    <small>Smart community tools</small>
+
+    <span>
+      🌎
+    </span>
+
+    <b>
+      Communities
+    </b>
+
+    <small>
+      Find your people
+    </small>
+
+  </div>
+
+
+  <div class="feature">
+
+    <span>
+      ⭐
+    </span>
+
+    <b>
+      XP & Levels
+    </b>
+
+    <small>
+      Build your reputation
+    </small>
+
+  </div>
+
+
+  <div class="feature">
+
+    <span>
+      🤖
+    </span>
+
+    <b>
+      AI
+    </b>
+
+    <small>
+      Smart community tools
+    </small>
+
   </div>
 
 </section>
 
 
-<!-- ROOMS -->
+
+<!-- ==================================================
+     HOME NAVIGATION
+================================================== -->
+
+<section class="zuno-navigation">
+
+  <button id="openFeedBtn"
+          class="nav-card">
+
+    <span>
+      📝
+    </span>
+
+    <b>
+      ZUNO Feed
+    </b>
+
+    <small>
+      Posts, thoughts & polls
+    </small>
+
+  </button>
+
+
+  <button id="openCommunitiesBtn"
+          class="nav-card">
+
+    <span>
+      👥
+    </span>
+
+    <b>
+      Communities
+    </b>
+
+    <small>
+      Discover your people
+    </small>
+
+  </button>
+
+
+  <button id="openPeopleBtn"
+          class="nav-card">
+
+    <span>
+      🔎
+    </span>
+
+    <b>
+      Discover People
+    </b>
+
+    <small>
+      Meet new users
+    </small>
+
+  </button>
+
+</section>
+
+
+
+<!-- ==================================================
+     ROOMS
+================================================== -->
+
 <section class="rooms-preview">
 
   <div class="section-head">
+
     <div>
-      <h2>Explore Communities</h2>
-      <p>Jump into a conversation.</p>
+
+      <h2>
+        Explore Communities
+      </h2>
+
+      <p>
+        Jump into a conversation.
+      </p>
+
     </div>
+
   </div>
 
+
   <div class="roomgrid">
+
 
     <button class="roomcard"
             data-room="Chill Zone">
 
-      <span>🌙</span>
-      <b>Chill Zone</b>
-      <small>Talk • Chill • Make new friends</small>
+      <span>
+        🌙
+      </span>
+
+      <b>
+        Chill Zone
+      </b>
+
+      <small>
+        Talk • Chill • Make new friends
+      </small>
 
     </button>
 
@@ -239,9 +504,17 @@
     <button class="roomcard"
             data-room="Music Lounge">
 
-      <span>🎵</span>
-      <b>Music Lounge</b>
-      <small>Music • Songs • Vibes</small>
+      <span>
+        🎵
+      </span>
+
+      <b>
+        Music Lounge
+      </b>
+
+      <small>
+        Music • Songs • Vibes
+      </small>
 
     </button>
 
@@ -249,9 +522,17 @@
     <button class="roomcard"
             data-room="Gaming">
 
-      <span>🎮</span>
-      <b>Gaming</b>
-      <small>Gaming • Fun • Squad</small>
+      <span>
+        🎮
+      </span>
+
+      <b>
+        Gaming
+      </b>
+
+      <small>
+        Gaming • Fun • Squad
+      </small>
 
     </button>
 
@@ -259,9 +540,17 @@
     <button class="roomcard"
             data-room="Random">
 
-      <span>💭</span>
-      <b>Random</b>
-      <small>Random talks • Anything goes</small>
+      <span>
+        💭
+      </span>
+
+      <b>
+        Random
+      </b>
+
+      <small>
+        Random talks • Anything goes
+      </small>
 
     </button>
 
@@ -272,35 +561,291 @@
 </main>
 
 
-<!-- CHAT -->
+
+<!-- ==================================================
+     ZUNO FEED
+================================================== -->
+
+<main id="feedScreen"
+      class="zuno-screen hidden">
+
+
+<div class="page-head">
+
+  <button id="feedBackBtn"
+          class="back">
+    ← Home
+  </button>
+
+  <div>
+
+    <h2>
+      📝 ZUNO Feed
+    </h2>
+
+    <p>
+      Share something with your people.
+    </p>
+
+  </div>
+
+</div>
+
+
+
+<!-- CREATE POST -->
+
+<section class="create-post">
+
+  <div class="create-post-top">
+
+    <div id="feedAvatar"
+         class="side-avatar">
+      👤
+    </div>
+
+    <textarea id="postInput"
+              maxlength="500"
+              placeholder="What's on your mind?"></textarea>
+
+  </div>
+
+
+  <div class="post-tools">
+
+    <button id="pollBtn"
+            class="secondary-btn">
+      📊 Poll
+    </button>
+
+    <button id="createPostBtn"
+            class="primary-btn">
+      Post →
+    </button>
+
+  </div>
+
+</section>
+
+
+
+<!-- POLL CREATOR -->
+
+<section id="pollCreator"
+         class="poll-creator hidden">
+
+  <h3>
+    📊 Create Poll
+  </h3>
+
+  <input id="pollQuestion"
+         maxlength="200"
+         placeholder="Ask a question...">
+
+  <input class="poll-option"
+         maxlength="100"
+         placeholder="Option 1">
+
+  <input class="poll-option"
+         maxlength="100"
+         placeholder="Option 2">
+
+  <input class="poll-option"
+         maxlength="100"
+         placeholder="Option 3">
+
+  <input class="poll-option"
+         maxlength="100"
+         placeholder="Option 4">
+
+</section>
+
+
+
+<!-- POSTS -->
+
+<section id="postFeed">
+
+  <div class="empty-state">
+
+    <span>
+      📝
+    </span>
+
+    No posts yet.<br>
+    Be the first to share something.
+
+  </div>
+
+</section>
+
+</main>
+
+
+
+<!-- ==================================================
+     COMMUNITIES SCREEN
+================================================== -->
+
+<main id="communitiesScreen"
+      class="zuno-screen hidden">
+
+
+<div class="page-head">
+
+  <button id="communitiesBackBtn"
+          class="back">
+    ← Home
+  </button>
+
+  <div>
+
+    <h2>
+      👥 Communities
+    </h2>
+
+    <p>
+      Find a place that matches your vibe.
+    </p>
+
+  </div>
+
+</div>
+
+
+<div class="community-search">
+
+  <input id="communitySearch"
+         placeholder="Search communities...">
+
+  <button id="createCommunityBtn"
+          class="primary-btn">
+    + Create
+  </button>
+
+</div>
+
+
+<section id="communityList"
+         class="community-grid">
+
+  <div class="empty-state">
+
+    <span>
+      🌎
+    </span>
+
+    Discover communities on ZUNO.
+
+  </div>
+
+</section>
+
+</main>
+
+
+
+<!-- ==================================================
+     PEOPLE SCREEN
+================================================== -->
+
+<main id="peopleScreen"
+      class="zuno-screen hidden">
+
+
+<div class="page-head">
+
+  <button id="peopleBackBtn"
+          class="back">
+    ← Home
+  </button>
+
+  <div>
+
+    <h2>
+      🔎 Discover People
+    </h2>
+
+    <p>
+      Find people and start a conversation.
+    </p>
+
+  </div>
+
+</div>
+
+
+<div class="community-search">
+
+  <input id="peopleSearch"
+         placeholder="Search username...">
+
+</div>
+
+
+<section id="discoverPeopleList"
+         class="discover-people">
+
+  <div class="empty-state">
+
+    <span>
+      👀
+    </span>
+
+    Search for people on ZUNO.
+
+  </div>
+
+</section>
+
+</main>
+
+
+
+<!-- ==================================================
+     CHAT
+================================================== -->
+
 <main id="chat"
       class="chat-layout hidden">
 
+
+<!-- SIDEBAR -->
+
 <aside class="sidebar">
+
 
   <button id="backBtn"
           class="back">
     ← Communities
   </button>
 
-  <h3>Communities</h3>
+
+  <h3>
+    Communities
+  </h3>
+
 
   <div id="roomList">
+
 
     <button class="room active"
             data-room="Chill Zone">
       🌙 Chill Zone
     </button>
 
+
     <button class="room"
             data-room="Music Lounge">
       🎵 Music Lounge
     </button>
 
+
     <button class="room"
             data-room="Gaming">
       🎮 Gaming
     </button>
+
 
     <button class="room"
             data-room="Random">
@@ -318,8 +863,15 @@
     </div>
 
     <div>
-      <b id="sideUsername">Guest</b>
-      <small id="sideLevel">Level 1</small>
+
+      <b id="sideUsername">
+        Guest
+      </b>
+
+      <small id="sideLevel">
+        Level 1
+      </small>
+
     </div>
 
   </div>
@@ -327,15 +879,21 @@
 </aside>
 
 
+
+<!-- CHAT AREA -->
+
 <section class="chat">
 
+
 <div class="chathead">
+
 
   <div class="room-info">
 
     <b id="roomTitle">
       🌙 Chill Zone
     </b>
+
 
     <div class="topic-row">
 
@@ -352,15 +910,24 @@
 
   </div>
 
+
   <button id="usersBtn"
           class="users">
-    👥 <span id="onlineCount">0</span>
+
+    👥
+
+    <span id="onlineCount">
+      0
+    </span>
+
   </button>
 
 </div>
 
 
-<!-- PUBLIC -->
+
+<!-- PUBLIC CHAT -->
+
 <div id="publicChat">
 
   <div id="messages"
@@ -374,9 +941,12 @@
 </div>
 
 
-<!-- PRIVATE -->
+
+<!-- PRIVATE CHAT -->
+
 <div id="privateChat"
      class="private-chat hidden">
+
 
   <div class="private-head">
 
@@ -385,7 +955,9 @@
       ←
     </button>
 
+
     <div>
+
       <b id="privateUserName">
         User
       </b>
@@ -393,13 +965,16 @@
       <small>
         Private chat
       </small>
+
     </div>
 
   </div>
 
+
   <div id="privateMessages"
        class="messages">
   </div>
+
 
   <div id="privateTyping"
        class="typing-indicator">
@@ -408,17 +983,22 @@
 </div>
 
 
+
 <!-- COMPOSER -->
+
 <div class="composer">
+
 
   <button id="emojiBtn"
           class="iconbtn">
     ☺
   </button>
 
+
   <input id="messageInput"
          maxlength="300"
          placeholder="Write something...">
+
 
   <button id="sendBtn"
           class="send">
@@ -428,7 +1008,9 @@
 </div>
 
 
+
 <!-- EMOJI -->
+
 <div id="emojiPanel"
      class="emoji-panel hidden">
 
@@ -458,20 +1040,30 @@
 </section>
 
 
+
 <!-- PEOPLE -->
+
 <aside id="people"
        class="people">
 
-  <h3>Online now</h3>
+  <h3>
+    Online now
+  </h3>
 
 </aside>
+
 
 </main>
 
 
-<!-- TOPIC -->
+
+<!-- ==================================================
+     TOPIC MODAL
+================================================== -->
+
 <div id="topicModal"
      class="topic-modal hidden">
+
 
   <div class="topic-box">
 
@@ -480,22 +1072,30 @@
       ✕
     </button>
 
-    <h2>✏️ Room Topic</h2>
+
+    <h2>
+      ✏️ Room Topic
+    </h2>
+
 
     <p id="topicRoomName">
       Chill Zone
     </p>
 
+
     <input id="topicInput"
            maxlength="100"
            placeholder="Write room topic...">
 
+
     <div class="topic-actions">
+
 
       <button id="cancelTopicBtn"
               class="topic-cancel">
         Cancel
       </button>
+
 
       <button id="saveTopicBtn"
               class="topic-save">
@@ -509,7 +1109,69 @@
 </div>
 
 
-<!-- XP TOAST -->
+
+<!-- ==================================================
+     CREATE COMMUNITY MODAL
+================================================== -->
+
+<div id="communityModal"
+     class="topic-modal hidden">
+
+
+  <div class="topic-box">
+
+    <button id="closeCommunityBtn"
+            class="topic-close">
+      ✕
+    </button>
+
+
+    <h2>
+      🌎 Create Community
+    </h2>
+
+
+    <input id="communityName"
+           maxlength="30"
+           placeholder="Community name">
+
+
+    <textarea id="communityDescription"
+              maxlength="200"
+              class="profile-input"
+              placeholder="Describe your community..."></textarea>
+
+
+    <input id="communityIcon"
+           maxlength="4"
+           placeholder="Community emoji">
+
+
+    <div class="topic-actions">
+
+      <button id="cancelCommunityBtn"
+              class="topic-cancel">
+        Cancel
+      </button>
+
+
+      <button id="saveCommunityBtn"
+              class="topic-save">
+        Create
+      </button>
+
+    </div>
+
+  </div>
+
+</div>
+
+
+
+<!-- ==================================================
+     XP TOAST
+================================================== -->
+
 <div id="xpToast"
      class="xp-toast hidden">
   ⭐ +XP
@@ -517,6 +1179,7 @@
 
 
 </div>
+
 
 <script src="app.js"></script>
 
